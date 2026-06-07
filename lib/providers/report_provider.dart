@@ -18,7 +18,10 @@ class ReportProvider extends ChangeNotifier {
       'SELECT '
       'COALESCE(SUM(final_total),0) AS sales, '
       'COALESCE(SUM(profit_amount),0) AS profit, '
+      'COALESCE(SUM(rebate_amount),0) AS rebate, '
       'COALESCE(SUM(customer_cd_amount),0) AS cd, '
+      'COALESCE(SUM(customer_cashback_amount),0) AS customer_cashback, '
+      'COALESCE(SUM(owner_keep_profit),0) AS owner_keep, '
       'COALESCE(SUM(company_cashback_amount),0) AS cashback '
       'FROM ${DatabaseTables.sales} WHERE sale_date >= ?',
       <Object?>[from.toIso8601String()],
@@ -51,8 +54,16 @@ class ReportProvider extends ChangeNotifier {
     summary = <String, num>{
       'todaySales': (totals.first['sales'] as num? ?? 0),
       'todayProfit': (totals.first['profit'] as num? ?? 0),
+      'todayRebate': (totals.first['rebate'] as num? ?? 0),
       'todayCd': (totals.first['cd'] as num? ?? 0),
+      'todayDoctorCashback': (totals.first['customer_cashback'] as num? ?? 0),
       'todayCashback': (totals.first['cashback'] as num? ?? 0),
+      'todayOfficePayable':
+          (totals.first['sales'] as num? ?? 0) -
+          (totals.first['cashback'] as num? ?? 0),
+      'todayOwnerKeep': (totals.first['owner_keep'] as num? ?? 0) == 0
+          ? (totals.first['profit'] as num? ?? 0)
+          : (totals.first['owner_keep'] as num? ?? 0),
       'totalProducts': (productCount.first['c'] as num? ?? 0),
       'lowStock': (lowStock.first['c'] as num? ?? 0),
     };

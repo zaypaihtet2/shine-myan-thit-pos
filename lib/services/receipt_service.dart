@@ -58,6 +58,11 @@ class ReceiptService {
                 'Date: ${sale['sale_date'] ?? ''}',
                 style: pw.TextStyle(fontSize: fontSize),
               ),
+              if ('${sale['customer_name'] ?? ''}'.trim().isNotEmpty)
+                pw.Text(
+                  'Customer: ${sale['customer_name']} (${sale['customer_type'] ?? 'regular'})',
+                  style: pw.TextStyle(fontSize: fontSize),
+                ),
               pw.Divider(),
               ...items.map(
                 (Map<String, Object?> i) => pw.Row(
@@ -65,7 +70,7 @@ class ReceiptService {
                   children: <pw.Widget>[
                     pw.Expanded(
                       child: pw.Text(
-                        '${i['product_name']} x ${i['quantity']}${((i['discount_percent'] as num?) ?? 0) > 0 ? ' (-${(i['discount_percent'] as num).toStringAsFixed(0)}%)' : ''}',
+                        '${i['product_name']} x ${((i['paid_quantity'] as num?) ?? (i['quantity'] as num?) ?? 0).toInt()}${((i['foc_quantity'] as num?) ?? 0) > 0 ? ' + FOC ${((i['foc_quantity'] as num?) ?? 0).toInt()}' : ''} [${_saleOptionLabel('${i['sale_option'] ?? 'normal'}')}]${((i['discount_percent'] as num?) ?? 0) > 0 ? ' (-${(i['discount_percent'] as num).toStringAsFixed(0)}%)' : ''}',
                         style: pw.TextStyle(fontSize: fontSize),
                       ),
                     ),
@@ -92,9 +97,20 @@ class ReceiptService {
               ),
               _line('Customer CD %', sale['customer_cd_percent'], fontSize),
               _line('Customer CD', sale['customer_cd_amount'], fontSize),
+              _line('Rebate', sale['rebate_amount'], fontSize),
+              _line(
+                'Doctor Cashback',
+                sale['customer_cashback_amount'],
+                fontSize,
+              ),
               _line(
                 'Owner Cashback',
                 sale['company_cashback_amount'],
+                fontSize,
+              ),
+              _line(
+                'Payable To Office',
+                sale['office_payable_amount'],
                 fontSize,
               ),
               pw.Text(
@@ -130,6 +146,21 @@ class ReceiptService {
         pw.Text('${value ?? ''}', style: pw.TextStyle(fontSize: fontSize)),
       ],
     );
+  }
+
+  String _saleOptionLabel(String code) {
+    switch (code) {
+      case 'office_rule':
+        return 'Office Rule';
+      case 'doctor_rule':
+        return 'Doctor Rule';
+      case 'cd2':
+        return 'CD 2%';
+      case 'dr_cashback':
+        return 'DR Cashback';
+      default:
+        return 'Normal';
+    }
   }
 
   PdfPageFormat _paperFormat(int mm) {

@@ -119,12 +119,44 @@ class DashboardScreen extends StatelessWidget {
                       icon: Icons.percent,
                     ),
                     DashboardCard(
+                      title: 'Today Rebate',
+                      value: Formatters.money(
+                        report.summary['todayRebate'] ?? 0,
+                        symbol: currency,
+                      ),
+                      icon: Icons.discount_outlined,
+                    ),
+                    DashboardCard(
+                      title: 'Today Doctor Cashback',
+                      value: Formatters.money(
+                        report.summary['todayDoctorCashback'] ?? 0,
+                        symbol: currency,
+                      ),
+                      icon: Icons.local_hospital_outlined,
+                    ),
+                    DashboardCard(
                       title: 'Today Owner Cashback',
                       value: Formatters.money(
                         report.summary['todayCashback'] ?? 0,
                         symbol: currency,
                       ),
                       icon: Icons.redeem_outlined,
+                    ),
+                    DashboardCard(
+                      title: 'Payable To Office',
+                      value: Formatters.money(
+                        report.summary['todayOfficePayable'] ?? 0,
+                        symbol: currency,
+                      ),
+                      icon: Icons.account_balance_outlined,
+                    ),
+                    DashboardCard(
+                      title: 'My Remaining Profit',
+                      value: Formatters.money(
+                        report.summary['todayOwnerKeep'] ?? 0,
+                        symbol: currency,
+                      ),
+                      icon: Icons.savings_outlined,
                     ),
                     DashboardCard(
                       title: 'Total Products',

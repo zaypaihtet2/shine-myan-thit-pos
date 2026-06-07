@@ -9,22 +9,48 @@ class CartItemWidget extends StatelessWidget {
     required this.onInc,
     required this.onDec,
     required this.onRemove,
+    required this.onModeChanged,
   });
 
   final CartLine line;
   final VoidCallback onInc;
   final VoidCallback onDec;
   final VoidCallback onRemove;
+  final ValueChanged<SalePricingMode> onModeChanged;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
         title: Text(line.product.productName),
-        subtitle: Text(
-          '${line.qty} x ${line.product.sellingPrice.toStringAsFixed(2)}'
-          '${line.product.discountPercent > 0 ? ' (-${line.product.discountPercent.toStringAsFixed(0)}%)' : ''}'
-          ' = ${line.subtotal.toStringAsFixed(2)}',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '${line.qty} x ${line.product.sellingPrice.toStringAsFixed(2)}'
+              '${line.discountPercent > 0 ? ' (-${line.discountPercent.toStringAsFixed(0)}%)' : ''}'
+              ' = ${line.subtotal.toStringAsFixed(2)}',
+            ),
+            const SizedBox(height: 6),
+            DropdownButton<SalePricingMode>(
+              value: line.pricingMode,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              items: SalePricingMode.values
+                  .map(
+                    (SalePricingMode mode) => DropdownMenuItem<SalePricingMode>(
+                      value: mode,
+                      child: Text(mode.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (SalePricingMode? mode) {
+                if (mode != null) {
+                  onModeChanged(mode);
+                }
+              },
+            ),
+          ],
         ),
         trailing: Wrap(
           spacing: 4,

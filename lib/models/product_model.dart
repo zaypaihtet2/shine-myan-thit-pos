@@ -10,6 +10,10 @@ class ProductModel {
     this.discountPercent = 0,
     required this.buyingPrice,
     required this.sellingPrice,
+    this.samePriceAsBuying = false,
+    this.focEnabled = false,
+    this.focBuyQty = 10,
+    this.focFreeQty = 1,
     required this.stockQuantity,
     required this.lowStockAlertQuantity,
     this.status = 'active',
@@ -27,6 +31,10 @@ class ProductModel {
   final double discountPercent;
   final double buyingPrice;
   final double sellingPrice;
+  final bool samePriceAsBuying;
+  final bool focEnabled;
+  final int focBuyQty;
+  final int focFreeQty;
   final int stockQuantity;
   final int lowStockAlertQuantity;
   final String status;
@@ -44,6 +52,10 @@ class ProductModel {
     double? discountPercent,
     double? buyingPrice,
     double? sellingPrice,
+    bool? samePriceAsBuying,
+    bool? focEnabled,
+    int? focBuyQty,
+    int? focFreeQty,
     int? stockQuantity,
     int? lowStockAlertQuantity,
     String? status,
@@ -61,6 +73,10 @@ class ProductModel {
       discountPercent: discountPercent ?? this.discountPercent,
       buyingPrice: buyingPrice ?? this.buyingPrice,
       sellingPrice: sellingPrice ?? this.sellingPrice,
+      samePriceAsBuying: samePriceAsBuying ?? this.samePriceAsBuying,
+      focEnabled: focEnabled ?? this.focEnabled,
+      focBuyQty: focBuyQty ?? this.focBuyQty,
+      focFreeQty: focFreeQty ?? this.focFreeQty,
       stockQuantity: stockQuantity ?? this.stockQuantity,
       lowStockAlertQuantity:
           lowStockAlertQuantity ?? this.lowStockAlertQuantity,
@@ -82,6 +98,10 @@ class ProductModel {
       'discount_percent': discountPercent,
       'buying_price': buyingPrice,
       'selling_price': sellingPrice,
+      'same_price_as_buying': samePriceAsBuying ? 1 : 0,
+      'foc_enabled': focEnabled ? 1 : 0,
+      'foc_buy_qty': focBuyQty,
+      'foc_free_qty': focFreeQty,
       'stock_quantity': stockQuantity,
       'low_stock_alert_quantity': lowStockAlertQuantity,
       'status': status,
@@ -102,6 +122,10 @@ class ProductModel {
       discountPercent: (map['discount_percent'] as num? ?? 0).toDouble(),
       buyingPrice: (map['buying_price'] as num? ?? 0).toDouble(),
       sellingPrice: (map['selling_price'] as num? ?? 0).toDouble(),
+      samePriceAsBuying: (map['same_price_as_buying'] as num? ?? 0) == 1,
+      focEnabled: (map['foc_enabled'] as num? ?? 0) == 1,
+      focBuyQty: map['foc_buy_qty'] as int? ?? 10,
+      focFreeQty: map['foc_free_qty'] as int? ?? 1,
       stockQuantity: map['stock_quantity'] as int? ?? 0,
       lowStockAlertQuantity: map['low_stock_alert_quantity'] as int? ?? 5,
       status: '${map['status'] ?? 'active'}',

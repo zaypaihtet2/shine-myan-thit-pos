@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/formatters.dart';
+import '../../models/customer_model.dart';
 import '../../models/product_model.dart';
+import '../../providers/customer_provider.dart';
 import '../../providers/pos_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/sales_provider.dart';
@@ -27,6 +29,7 @@ class PosSaleScreen extends StatefulWidget {
 
 class _PosSaleScreenState extends State<PosSaleScreen> {
   final TextEditingController _search = TextEditingController();
+  final TextEditingController _customer = TextEditingController();
   final TextEditingController _paid = TextEditingController(text: '0');
   int? _lastSaleId;
 
@@ -34,13 +37,18 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
   void initState() {
     super.initState();
     PosSaleScreen.saveSaleGlobal = _saveSale;
-    PosSaleScreen.clearCartGlobal = () => context.read<PosProvider>().clear();
+    PosSaleScreen.clearCartGlobal = () {
+      context.read<PosProvider>().clear();
+      _paid.text = '0';
+      _customer.clear();
+    };
     PosSaleScreen.printLastVoucherGlobal = _printLast;
   }
 
   @override
   void dispose() {
     _search.dispose();
+    _customer.dispose();
     _paid.dispose();
     super.dispose();
   }
@@ -48,6 +56,7 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
   @override
   Widget build(BuildContext context) {
     final ProductProvider products = context.watch<ProductProvider>();
+    final CustomerProvider customers = context.watch<CustomerProvider>();
     final PosProvider pos = context.watch<PosProvider>();
     final SettingsProvider settings = context.watch<SettingsProvider>();
 
@@ -222,6 +231,8 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                                   },
                                   onDec: () => pos.decQty(line),
                                   onRemove: () => pos.remove(line),
+                                  onModeChanged: (SalePricingMode mode) =>
+                                      pos.setLinePricingMode(line, mode),
                                 );
                               },
                             ),
@@ -241,6 +252,72 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                           pos.setPaymentMethod(v ?? 'Cash'),
                       decoration: const InputDecoration(
                         labelText: 'Payment Method',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<int?>(
+                      initialValue: pos.customerId,
+                      items: <DropdownMenuItem<int?>>[
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('Walk-in Customer'),
+                        ),
+                        ...customers.customers.map(
+                          (CustomerModel c) => DropdownMenuItem<int?>(
+                            value: c.id,
+                            child: Text('${c.name} (${c.type})'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (int? value) {
+                        if (value == null) {
+                          pos.setCustomerProfile(
+                            id: null,
+                            name: _customer.text.trim(),
+                            type: 'regular',
+                            priceMode: 'normal',
+                            pricePercent: 0,
+                            rebatePercent: 0,
+                            cashbackPercent: 0,
+                          );
+                          return;
+                        }
+                        final CustomerModel? selected = customers.customers
+                            .where((CustomerModel c) => c.id == value)
+                            .cast<CustomerModel?>()
+                            .firstOrNull;
+                        if (selected == null) return;
+                        _customer.text = selected.name;
+                        pos.setCustomerProfile(
+                          id: selected.id,
+                          name: selected.name,
+                          type: selected.type,
+                          priceMode: selected.priceMode,
+                          pricePercent: selected.pricePercent,
+                          rebatePercent: selected.rebatePercent,
+                          cashbackPercent: selected.cashbackPercent,
+                        );
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Customer Profile',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _customer,
+                      onChanged: (String value) {
+                        pos.setCustomerProfile(
+                          id: null,
+                          name: value,
+                          type: pos.customerType,
+                          priceMode: pos.customerPriceMode,
+                          pricePercent: pos.customerPricePercent,
+                          rebatePercent: pos.customerRebatePercent,
+                          cashbackPercent: pos.customerCashbackPercent,
+                        );
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Customer Name (optional)',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -274,9 +351,46 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                             ),
                           ),
                           _line(
+                            'Customer CD',
+                            Formatters.money(
+                              pos.customerCdAmount,
+                              symbol: settings.currencySymbol,
+                            ),
+                          ),
+                          _line(
+                            'Customer Rebate',
+                            Formatters.money(
+                              pos.rebateAmount,
+                              symbol: settings.currencySymbol,
+                            ),
+                          ),
+                          _line(
+                            'Doctor Cashback',
+                            Formatters.money(
+                              pos.customerCashbackAmount,
+                              symbol: settings.currencySymbol,
+                            ),
+                          ),
+                          _line(
                             'Owner Cashback',
                             Formatters.money(
                               pos.companyCashbackAmount,
+                              symbol: settings.currencySymbol,
+                            ),
+                          ),
+                          if (pos.totalFocQty > 0)
+                            _line('FOC Qty', '${pos.totalFocQty}'),
+                          _line(
+                            'Payable To Office',
+                            Formatters.money(
+                              pos.officePayableAmount,
+                              symbol: settings.currencySymbol,
+                            ),
+                          ),
+                          _line(
+                            'My Remaining Profit',
+                            Formatters.money(
+                              pos.ownerKeepProfit,
                               symbol: settings.currencySymbol,
                             ),
                           ),
@@ -326,7 +440,11 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: pos.clear,
+                            onPressed: () {
+                              pos.clear();
+                              _paid.text = '0';
+                              _customer.clear();
+                            },
                             icon: const Icon(Icons.clear_all),
                             label: const Text('Clear (ESC)'),
                           ),
@@ -374,6 +492,7 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
       await sales.load();
       if (!mounted) return;
       _paid.text = '0';
+      _customer.clear();
       _toast('Sale saved: #$saleId');
       Navigator.of(context).push(
         MaterialPageRoute<void>(

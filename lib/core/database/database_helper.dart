@@ -187,6 +187,201 @@ class DatabaseHelper {
         );
       }
     }
+
+    if (oldVersion < 4) {
+      final List<Map<String, Object?>> saleItemInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.saleItems})',
+      );
+      final Set<String> saleItemColumns = saleItemInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!saleItemColumns.contains('sale_option')) {
+        await db.execute(
+          "ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN sale_option TEXT NOT NULL DEFAULT 'normal'",
+        );
+      }
+    }
+
+    if (oldVersion < 5) {
+      final List<Map<String, Object?>> saleInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.sales})',
+      );
+      final Set<String> saleColumns = saleInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!saleColumns.contains('customer_name')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN customer_name TEXT',
+        );
+      }
+    }
+
+    if (oldVersion < 6) {
+      await db.execute(
+        '''CREATE TABLE IF NOT EXISTS ${DatabaseTables.customers} (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'regular',
+          rebate_percent REAL NOT NULL DEFAULT 0,
+          cashback_percent REAL NOT NULL DEFAULT 0,
+          status TEXT DEFAULT 'active',
+          created_at TEXT,
+          updated_at TEXT
+        )''',
+      );
+
+      final List<Map<String, Object?>> saleInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.sales})',
+      );
+      final Set<String> saleColumns = saleInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!saleColumns.contains('customer_id')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN customer_id INTEGER',
+        );
+      }
+      if (!saleColumns.contains('customer_type')) {
+        await db.execute(
+          "ALTER TABLE ${DatabaseTables.sales} ADD COLUMN customer_type TEXT NOT NULL DEFAULT 'regular'",
+        );
+      }
+    }
+
+    if (oldVersion < 7) {
+      final List<Map<String, Object?>> productInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.products})',
+      );
+      final Set<String> productColumns = productInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!productColumns.contains('same_price_as_buying')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.products} ADD COLUMN same_price_as_buying INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (!productColumns.contains('foc_enabled')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.products} ADD COLUMN foc_enabled INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (!productColumns.contains('foc_buy_qty')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.products} ADD COLUMN foc_buy_qty INTEGER NOT NULL DEFAULT 10',
+        );
+      }
+      if (!productColumns.contains('foc_free_qty')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.products} ADD COLUMN foc_free_qty INTEGER NOT NULL DEFAULT 1',
+        );
+      }
+
+      final List<Map<String, Object?>> customerInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.customers})',
+      );
+      final Set<String> customerColumns = customerInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!customerColumns.contains('price_mode')) {
+        await db.execute(
+          "ALTER TABLE ${DatabaseTables.customers} ADD COLUMN price_mode TEXT NOT NULL DEFAULT 'normal'",
+        );
+      }
+      if (!customerColumns.contains('price_percent')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.customers} ADD COLUMN price_percent REAL NOT NULL DEFAULT 0',
+        );
+      }
+
+      final List<Map<String, Object?>> saleInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.sales})',
+      );
+      final Set<String> saleColumns = saleInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!saleColumns.contains('rebate_percent')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN rebate_percent REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleColumns.contains('rebate_amount')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN rebate_amount REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleColumns.contains('customer_cashback_percent')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN customer_cashback_percent REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleColumns.contains('customer_cashback_amount')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN customer_cashback_amount REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleColumns.contains('office_payable_amount')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN office_payable_amount REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleColumns.contains('owner_keep_profit')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.sales} ADD COLUMN owner_keep_profit REAL NOT NULL DEFAULT 0',
+        );
+      }
+
+      final List<Map<String, Object?>> saleItemInfo = await db.rawQuery(
+        'PRAGMA table_info(${DatabaseTables.saleItems})',
+      );
+      final Set<String> saleItemColumns = saleItemInfo
+          .map((Map<String, Object?> e) => '${e['name'] ?? ''}')
+          .toSet();
+      if (!saleItemColumns.contains('paid_quantity')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN paid_quantity INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleItemColumns.contains('foc_quantity')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN foc_quantity INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleItemColumns.contains('rebate_percent')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN rebate_percent REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleItemColumns.contains('rebate_amount')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN rebate_amount REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleItemColumns.contains('unit_price_applied')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN unit_price_applied REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleItemColumns.contains('customer_cashback_percent')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN customer_cashback_percent REAL NOT NULL DEFAULT 0',
+        );
+      }
+      if (!saleItemColumns.contains('customer_cashback_amount')) {
+        await db.execute(
+          'ALTER TABLE ${DatabaseTables.saleItems} ADD COLUMN customer_cashback_amount REAL NOT NULL DEFAULT 0',
+        );
+      }
+    }
+
+    if (oldVersion < 8) {
+      final String now = DateTime.now().toIso8601String();
+      await db.update(
+        DatabaseTables.settings,
+        <String, Object?>{'value': 'Shine Myan Thit', 'updated_at': now},
+        where: 'key = ? AND value = ?',
+        whereArgs: <Object?>['shop_name', 'My Shop'],
+      );
+    }
   }
 
   Future<void> _seedDefaults(Database db) async {
@@ -201,7 +396,7 @@ class DatabaseHelper {
     }
 
     final Map<String, String> defaults = <String, String>{
-      'shop_name': 'My Shop',
+      'shop_name': 'Shine Myan Thit',
       'shop_phone': '',
       'shop_address': '',
       'default_customer_cd_percent': '2',
@@ -308,12 +503,21 @@ class DatabaseHelper {
 
   Future<int> saveSale({
     required String invoiceNo,
+    required int? customerId,
+    required String customerName,
+    required String customerType,
     required List<Map<String, Object?>> items,
     required double subtotal,
     required double discountAmount,
+    required double rebatePercent,
+    required double rebateAmount,
     required double customerCdPercent,
     required double customerCdAmount,
+    required double customerCashbackPercent,
+    required double customerCashbackAmount,
     required double companyCashbackAmount,
+    required double officePayableAmount,
+    required double ownerKeepProfit,
     required double finalTotal,
     required double paidAmount,
     required double changeAmount,
@@ -366,13 +570,24 @@ class DatabaseHelper {
       final int saleId = await txn
           .insert(DatabaseTables.sales, <String, Object?>{
             'invoice_no': invoiceNo,
+            'customer_id': customerId,
+            'customer_name': customerName.trim().isEmpty
+                ? null
+                : customerName.trim(),
+            'customer_type': customerType,
             'sale_type': 'sale',
             'reference_sale_id': null,
             'subtotal': subtotal,
             'discount_amount': discountAmount,
+            'rebate_percent': rebatePercent,
+            'rebate_amount': rebateAmount,
             'customer_cd_percent': customerCdPercent,
             'customer_cd_amount': customerCdAmount,
+            'customer_cashback_percent': customerCashbackPercent,
+            'customer_cashback_amount': customerCashbackAmount,
             'company_cashback_amount': companyCashbackAmount,
+            'office_payable_amount': officePayableAmount,
+            'owner_keep_profit': ownerKeepProfit,
             'final_total': finalTotal,
             'paid_amount': paidAmount,
             'change_amount': changeAmount,
@@ -726,7 +941,6 @@ class DatabaseHelper {
 
         final double subtotal =
             (p1Sell * q1 - p1DiscountAmount) + (p2Sell * q2 - p2DiscountAmount);
-        final double buyingTotal = p1Buy * q1 + p2Buy * q2;
         final double customerCdPercent = 2;
         final double customerCdAmount = subtotal * (customerCdPercent / 100);
         const double discount = 500;
@@ -734,8 +948,7 @@ class DatabaseHelper {
             (companies.first['cashback_percent'] as num? ?? 0).toDouble();
         final double cashback = subtotal * cbPercent / 100;
         final double finalTotal = subtotal - discount - customerCdAmount;
-        final double profit =
-            subtotal - buyingTotal + cashback - customerCdAmount - discount;
+        final double profit = cashback;
 
         final int saleId = await txn
             .insert(DatabaseTables.sales, <String, Object?>{
@@ -771,7 +984,7 @@ class DatabaseHelper {
           'company_cashback_percent': cbPercent,
           'company_cashback_amount':
               (p1Sell * q1 - p1DiscountAmount) * cbPercent / 100,
-          'profit_amount': ((p1Sell * q1 - p1DiscountAmount) - (p1Buy * q1)),
+          'profit_amount': (p1Sell * q1 - p1DiscountAmount) * cbPercent / 100,
           'created_at': now,
           'updated_at': now,
         });
@@ -790,7 +1003,7 @@ class DatabaseHelper {
           'company_cashback_percent': cbPercent,
           'company_cashback_amount':
               (p2Sell * q2 - p2DiscountAmount) * cbPercent / 100,
-          'profit_amount': ((p2Sell * q2 - p2DiscountAmount) - (p2Buy * q2)),
+          'profit_amount': (p2Sell * q2 - p2DiscountAmount) * cbPercent / 100,
           'created_at': now,
           'updated_at': now,
         });
@@ -889,7 +1102,6 @@ class DatabaseHelper {
       }
 
       double returnSubtotal = 0;
-      double returnBuying = 0;
       double returnCashback = 0;
       final List<Map<String, Object?>> itemRows = <Map<String, Object?>>[];
 
@@ -939,13 +1151,10 @@ class DatabaseHelper {
             ? 0
             : lineDiscountAmount * (returnQty / soldQty);
         final double lineTotal = lineGross - lineDiscount;
-        final double lineBuying = buying * returnQty;
         final double lineCashback = lineTotal * cashbackPercent / 100;
-        final double lineProfitReversal =
-            -(lineTotal - lineBuying + lineCashback);
+        final double lineProfitReversal = -lineCashback;
 
         returnSubtotal += lineTotal;
-        returnBuying += lineBuying;
         returnCashback += lineCashback;
 
         itemRows.add(<String, Object?>{
@@ -980,11 +1189,7 @@ class DatabaseHelper {
       final double returnCdAmount = originalCdAmount * ratio;
       final double returnFinal =
           returnSubtotal - returnDiscount - returnCdAmount;
-      final double returnProfit =
-          -((returnSubtotal - returnBuying) +
-              returnCashback -
-              returnCdAmount -
-              returnDiscount);
+      final double returnProfit = -returnCashback;
 
       final List<Map<String, Object?>> countRows = await txn.rawQuery(
         'SELECT COUNT(*) AS c FROM ${DatabaseTables.saleReturns} WHERE sale_id = ?',

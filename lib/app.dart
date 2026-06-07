@@ -6,6 +6,7 @@ import 'package:provider/single_child_widget.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/category_provider.dart';
 import 'providers/company_provider.dart';
+import 'providers/customer_provider.dart';
 import 'providers/pos_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/report_provider.dart';
@@ -15,6 +16,7 @@ import 'screens/auth/splash_screen.dart';
 import 'screens/backup/backup_restore_screen.dart';
 import 'screens/categories/category_screen.dart';
 import 'screens/companies/company_screen.dart';
+import 'screens/customers/customer_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/pos/pos_sale_screen.dart';
 import 'screens/products/product_list_screen.dart';
@@ -40,6 +42,9 @@ class PosApp extends StatelessWidget {
         ChangeNotifierProvider<CompanyProvider>(
           create: (_) => CompanyProvider(),
         ),
+        ChangeNotifierProvider<CustomerProvider>(
+          create: (_) => CustomerProvider(),
+        ),
         ChangeNotifierProvider<ProductProvider>(
           create: (_) => ProductProvider(),
         ),
@@ -56,7 +61,7 @@ class PosApp extends StatelessWidget {
         builder: (_, SettingsProvider settings, child) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            title: 'Jar Jar POS',
+            title: 'Shine Myan Thit',
             theme: AppTheme.lightTheme(),
             darkTheme: AppTheme.darkTheme(),
             themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
@@ -101,6 +106,7 @@ class _RootGateState extends State<RootGate> {
       final CategoryProvider categories = context.read<CategoryProvider>();
       final CompanyProvider companies = context.read<CompanyProvider>();
       final ProductProvider products = context.read<ProductProvider>();
+      final CustomerProvider customers = context.read<CustomerProvider>();
       final SalesProvider sales = context.read<SalesProvider>();
       final ReportProvider reports = context.read<ReportProvider>();
 
@@ -108,6 +114,7 @@ class _RootGateState extends State<RootGate> {
       await sales.seedDemoData();
       await categories.load();
       await companies.load();
+      await customers.load();
       await products.load();
       await sales.load();
       await reports.loadDashboard();
@@ -202,6 +209,8 @@ class _HomeShellState extends State<HomeShell> {
         return const CategoryScreen();
       case AppPage.companies:
         return const CompanyScreen();
+      case AppPage.customers:
+        return const CustomerScreen();
       case AppPage.stock:
         return const StockManagementScreen();
       case AppPage.sales:

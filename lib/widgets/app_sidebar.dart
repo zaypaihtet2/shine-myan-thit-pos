@@ -6,6 +6,7 @@ enum AppPage {
   products,
   categories,
   companies,
+  customers,
   stock,
   sales,
   reports,
@@ -78,7 +79,7 @@ class AppSidebar extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            'Jar Jar POS',
+                            'Shine Myan Thit',
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
                                   color: Colors.white,
@@ -145,6 +146,11 @@ class AppSidebar extends StatelessWidget {
                     icon: Icon(Icons.apartment_outlined),
                     selectedIcon: Icon(Icons.apartment_rounded),
                     label: Text('Companies'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.groups_outlined),
+                    selectedIcon: Icon(Icons.groups_rounded),
+                    label: Text('Customers'),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.move_down_outlined),

@@ -22,11 +22,13 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late final TextEditingController _name;
   late final TextEditingController _barcode;
   late final TextEditingController _sku;
-  late final TextEditingController _buying;
   late final TextEditingController _selling;
   late final TextEditingController _discountPercent;
   late final TextEditingController _stock;
   late final TextEditingController _lowStock;
+  late final TextEditingController _focBuyQty;
+  late final TextEditingController _focFreeQty;
+  bool _focEnabled = false;
   int? categoryId;
   int? companyId;
   String? imagePath;
@@ -38,8 +40,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _name = TextEditingController(text: p?.productName ?? '');
     _barcode = TextEditingController(text: p?.barcode ?? '');
     _sku = TextEditingController(text: p?.sku ?? '');
-    _buying = TextEditingController(text: (p?.buyingPrice ?? 0).toString());
     _selling = TextEditingController(text: (p?.sellingPrice ?? 0).toString());
+    _focEnabled = p?.focEnabled ?? false;
     _discountPercent = TextEditingController(
       text: (p?.discountPercent ?? 0).toString(),
     );
@@ -47,6 +49,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _lowStock = TextEditingController(
       text: (p?.lowStockAlertQuantity ?? 5).toString(),
     );
+    _focBuyQty = TextEditingController(text: '${p?.focBuyQty ?? 10}');
+    _focFreeQty = TextEditingController(text: '${p?.focFreeQty ?? 1}');
     categoryId = p?.categoryId;
     companyId = p?.companyId;
     imagePath = p?.imagePath;
@@ -185,18 +189,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               children: <Widget>[
                 Expanded(
                   child: TextField(
-                    controller: _buying,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Buying Price',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
                     controller: _selling,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -208,6 +200,36 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              value: _focEnabled,
+              onChanged: (bool value) {
+                setState(() => _focEnabled = value);
+              },
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Enable FOC Rule'),
+              subtitle: const Text('Example: buy 10, get 1 free'),
+            ),
+            if (_focEnabled)
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TextField(
+                      controller: _focBuyQty,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Buy Qty'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _focFreeQty,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'FOC Qty'),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 8),
             Row(
               children: <Widget>[
@@ -249,11 +271,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _name.dispose();
     _barcode.dispose();
     _sku.dispose();
-    _buying.dispose();
     _selling.dispose();
     _discountPercent.dispose();
     _stock.dispose();
     _lowStock.dispose();
+    _focBuyQty.dispose();
+    _focFreeQty.dispose();
     super.dispose();
   }
 
@@ -289,8 +312,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         sku: _sku.text.trim().isEmpty ? null : _sku.text.trim(),
         imagePath: imagePath,
         discountPercent: double.tryParse(_discountPercent.text) ?? 0,
-        buyingPrice: double.tryParse(_buying.text) ?? 0,
+        buyingPrice: double.tryParse(_selling.text) ?? 0,
         sellingPrice: double.tryParse(_selling.text) ?? 0,
+        samePriceAsBuying: false,
+        focEnabled: _focEnabled,
+        focBuyQty: int.tryParse(_focBuyQty.text) ?? 10,
+        focFreeQty: int.tryParse(_focFreeQty.text) ?? 1,
         stockQuantity: int.tryParse(_stock.text) ?? 0,
         lowStockAlertQuantity: int.tryParse(_lowStock.text) ?? 5,
       ),

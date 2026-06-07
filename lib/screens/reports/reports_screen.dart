@@ -169,12 +169,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 ),
                               ),
                               title: Text(
-                                '${r['invoice_no']} - ${r['payment_method']}',
+                                '${r['invoice_no']} - ${r['payment_method']}'
+                                '${'${r['customer_name'] ?? ''}'.trim().isNotEmpty ? ' - ${r['customer_name']} (${r['customer_type'] ?? 'regular'})' : ''}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              subtitle: Text('${r['sale_date']}'),
+                              subtitle: Text(
+                                '${r['sale_date']}\n'
+                                'Office Payable: ${Formatters.money((r['office_payable_amount'] as num? ?? ((r['final_total'] as num? ?? 0) - (r['company_cashback_amount'] as num? ?? 0))), symbol: currency)} | '
+                                'My Profit: ${Formatters.money((r['owner_keep_profit'] as num? ?? r['profit_amount'] as num? ?? 0), symbol: currency)}',
+                              ),
+                              isThreeLine: true,
                               trailing: Text(
                                 Formatters.money(
                                   (r['final_total'] as num? ?? 0),
@@ -212,10 +218,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
       (double a, Map<String, Object?> b) =>
           a + ((b['customer_cd_amount'] as num? ?? 0).toDouble()),
     );
+    final double totalRebate = rows.fold<double>(
+      0,
+      (double a, Map<String, Object?> b) =>
+          a + ((b['rebate_amount'] as num? ?? 0).toDouble()),
+    );
+    final double totalCustomerCashback = rows.fold<double>(
+      0,
+      (double a, Map<String, Object?> b) =>
+          a + ((b['customer_cashback_amount'] as num? ?? 0).toDouble()),
+    );
     final double totalCashback = rows.fold<double>(
       0,
       (double a, Map<String, Object?> b) =>
           a + ((b['company_cashback_amount'] as num? ?? 0).toDouble()),
+    );
+    final double totalOfficePayable = rows.fold<double>(
+      0,
+      (double a, Map<String, Object?> b) =>
+          a +
+          ((b['office_payable_amount'] as num? ??
+                  ((b['final_total'] as num? ?? 0) -
+                      (b['company_cashback_amount'] as num? ?? 0)))
+              .toDouble()),
+    );
+    final double totalRemainingProfit = rows.fold<double>(
+      0,
+      (double a, Map<String, Object?> b) =>
+          a +
+          ((b['owner_keep_profit'] as num? ?? (b['profit_amount'] as num? ?? 0))
+              .toDouble()),
     );
 
     return Card(
@@ -251,9 +283,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   Icons.percent,
                 ),
                 _MetricBox(
+                  'Rebate',
+                  Formatters.money(totalRebate, symbol: currency),
+                  Icons.discount_outlined,
+                ),
+                _MetricBox(
+                  'Doctor Cashback',
+                  Formatters.money(totalCustomerCashback, symbol: currency),
+                  Icons.local_hospital_outlined,
+                ),
+                _MetricBox(
                   'Owner Cashback',
                   Formatters.money(totalCashback, symbol: currency),
                   Icons.redeem_outlined,
+                ),
+                _MetricBox(
+                  'Payable To Office',
+                  Formatters.money(totalOfficePayable, symbol: currency),
+                  Icons.account_balance_outlined,
+                ),
+                _MetricBox(
+                  'My Remaining Profit',
+                  Formatters.money(totalRemainingProfit, symbol: currency),
+                  Icons.savings_outlined,
                 ),
                 _MetricBox(
                   'Total Invoices',
@@ -264,7 +316,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Owner cashback is already included in profit.',
+              'Payable To Office = Sales - Owner Cashback. My Remaining Profit = Profit.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -298,26 +350,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final List<List<Object?>> csvRows = <List<Object?>>[
       <Object?>[
         'Invoice',
+        'Customer Name',
+        'Customer Type',
         'Subtotal',
         'Discount',
         'Customer CD %',
         'Customer CD Amount',
+        'Rebate Amount',
+        'Doctor Cashback',
         'Owner Cashback',
+        'Payable To Office',
         'Final Total',
         'Profit',
+        'My Remaining Profit',
         'Payment',
         'Date',
       ],
       ...rows.map(
         (Map<String, Object?> e) => <Object?>[
           e['invoice_no'],
+          e['customer_name'],
+          e['customer_type'],
           e['subtotal'],
           e['discount_amount'],
           e['customer_cd_percent'],
           e['customer_cd_amount'],
+          e['rebate_amount'],
+          e['customer_cashback_amount'],
           e['company_cashback_amount'],
+          (e['office_payable_amount'] as num? ??
+              ((e['final_total'] as num? ?? 0) -
+                  (e['company_cashback_amount'] as num? ?? 0))),
           e['final_total'],
           e['profit_amount'],
+          e['owner_keep_profit'] ?? e['profit_amount'],
           e['payment_method'],
           e['sale_date'],
         ],

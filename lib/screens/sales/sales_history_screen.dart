@@ -180,9 +180,21 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                         context,
                                       ).textTheme.bodyMedium,
                                     ),
+                                    if ((s.customerName ?? '')
+                                        .trim()
+                                        .isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Customer: ${s.customerName} (${s.customerType})',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Payment: ${s.paymentMethod}  •  Profit: ${Formatters.money(s.profitAmount, symbol: currency)}',
+                                      'Payment: ${s.paymentMethod}  •  Profit: ${Formatters.money(s.ownerKeepProfit, symbol: currency)}',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,

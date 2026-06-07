@@ -69,6 +69,10 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text('Date: ${sale!['sale_date']}'),
+            if ('${sale!['customer_name'] ?? ''}'.trim().isNotEmpty)
+              Text(
+                'Customer: ${sale!['customer_name']} (${sale!['customer_type'] ?? 'regular'})',
+              ),
             Text('Payment: ${sale!['payment_method']}'),
             const SizedBox(height: 12),
             Expanded(
@@ -77,7 +81,9 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                     .map(
                       (Map<String, Object?> e) => ListTile(
                         title: Text(
-                          '${e['product_name']} x ${e['quantity']}'
+                          '${e['product_name']} x ${(e['paid_quantity'] as num? ?? e['quantity'] as num? ?? 0).toInt()}'
+                          '${(e['foc_quantity'] as num? ?? 0) > 0 ? ' + FOC ${(e['foc_quantity'] as num? ?? 0).toInt()}' : ''}'
+                          ' [${_saleOptionLabel('${e['sale_option'] ?? 'normal'}')}]'
                           '${(e['discount_percent'] as num? ?? 0) > 0 ? ' (-${(e['discount_percent'] as num).toStringAsFixed(0)}%)' : ''}',
                         ),
                         trailing: Text(
@@ -99,17 +105,26 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
               'Discount: ${Formatters.money((sale!['discount_amount'] as num? ?? 0) != 0 ? (sale!['discount_amount'] as num? ?? 0) : items.fold<double>(0, (double total, Map<String, Object?> item) => total + (item['discount_amount'] as num? ?? 0).toDouble()), symbol: currency)}',
             ),
             Text(
+              'Rebate: ${Formatters.money((sale!['rebate_amount'] as num? ?? 0), symbol: currency)}',
+            ),
+            Text(
               'Customer CD: ${Formatters.money((sale!['customer_cd_amount'] as num? ?? 0), symbol: currency)}',
             ),
             Text(
+              'Doctor Cashback: ${Formatters.money((sale!['customer_cashback_amount'] as num? ?? 0), symbol: currency)}',
+            ),
+            Text(
               'Owner Cashback: ${Formatters.money((sale!['company_cashback_amount'] as num? ?? 0), symbol: currency)}',
+            ),
+            Text(
+              'Payable To Office: ${Formatters.money((sale!['office_payable_amount'] as num? ?? 0), symbol: currency)}',
             ),
             Text(
               'Included in profit',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             Text(
-              'Profit: ${Formatters.money((sale!['profit_amount'] as num? ?? 0), symbol: currency)}',
+              'Profit: ${Formatters.money((sale!['owner_keep_profit'] as num? ?? sale!['profit_amount'] as num? ?? 0), symbol: currency)}',
             ),
             Text(
               'Total: ${Formatters.money((sale!['final_total'] as num? ?? 0), symbol: currency)}',
@@ -157,6 +172,21 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
       sale: sale!,
       items: items,
     );
+  }
+
+  String _saleOptionLabel(String code) {
+    switch (code) {
+      case 'office_rule':
+        return 'Office Rule';
+      case 'doctor_rule':
+        return 'Doctor Rule';
+      case 'cd2':
+        return 'CD 2%';
+      case 'dr_cashback':
+        return 'DR Cashback';
+      default:
+        return 'Normal';
+    }
   }
 
   Future<void> _openReturn() async {

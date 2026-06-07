@@ -53,11 +53,14 @@ class _SaleReturnScreenState extends State<SaleReturnScreen> {
                 children: widget.saleItems.map((Map<String, Object?> item) {
                   final int itemId = item['id'] as int;
                   final int soldQty = item['quantity'] as int? ?? 0;
+                  final int paidQty =
+                      (item['paid_quantity'] as int?) ?? soldQty;
+                  final int focQty = (item['foc_quantity'] as int?) ?? 0;
                   return Card(
                     child: ListTile(
                       title: Text('${item['product_name']}'),
                       subtitle: Text(
-                        'Sold Qty: $soldQty | Unit: ${item['selling_price']}',
+                        'Sold Qty: $soldQty (Paid: $paidQty, FOC: $focQty) | Unit: ${item['selling_price']}',
                       ),
                       trailing: SizedBox(
                         width: 110,

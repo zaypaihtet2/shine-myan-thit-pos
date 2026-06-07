@@ -16,7 +16,7 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String get shopName => values['shop_name'] ?? 'My Shop';
+  String get shopName => values['shop_name'] ?? 'Shine Myan Thit';
   String get shopPhone => values['shop_phone'] ?? '';
   String get shopAddress => values['shop_address'] ?? '';
   String get currencySymbol => values['currency_symbol'] ?? 'Ks';
