@@ -41,6 +41,7 @@ class _VoucherPreviewScreenState extends State<VoucherPreviewScreen> {
         'logo_path': settings.voucherLogoPath,
         'paper_mm': '${settings.voucherPaperSizeMm}',
         'font_size': '${settings.voucherFontSize}',
+        'currency': settings.currencySymbol,
       },
       sale: sale,
       items: items,
