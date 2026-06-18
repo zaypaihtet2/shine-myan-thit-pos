@@ -79,20 +79,30 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
               child: ListView(
                 children: items
                     .map(
-                      (Map<String, Object?> e) => ListTile(
-                        title: Text(
-                          '${e['product_name']} x ${(e['paid_quantity'] as num? ?? e['quantity'] as num? ?? 0).toInt()}'
-                          '${(e['foc_quantity'] as num? ?? 0) > 0 ? ' + FOC ${(e['foc_quantity'] as num? ?? 0).toInt()}' : ''}'
-                          ' [${_saleOptionLabel('${e['sale_option'] ?? 'normal'}')}]'
-                          '${(e['discount_percent'] as num? ?? 0) > 0 ? ' (-${(e['discount_percent'] as num).toStringAsFixed(0)}%)' : ''}',
-                        ),
-                        trailing: Text(
-                          Formatters.money(
-                            (e['subtotal'] as num? ?? 0),
-                            symbol: currency,
+                      (Map<String, Object?> e) {
+                        final int paidQty = (e['paid_quantity'] as num? ?? e['quantity'] as num? ?? 0).toInt();
+                        final int focQty = (e['foc_quantity'] as num? ?? 0).toInt();
+                        final int totalQty = paidQty + focQty;
+                        final double unitPrice = ((e['unit_price_applied'] as num? ?? 0).toDouble()) != 0
+                            ? (e['unit_price_applied'] as num).toDouble()
+                            : (e['selling_price'] as num? ?? 0).toDouble();
+                        final double amount = (e['subtotal'] as num? ?? 0).toDouble();
+                        return ListTile(
+                          title: Text(
+                            '${e['product_name']} [${_saleOptionLabel('${e['sale_option'] ?? 'normal'}')}]'
+                            '${(e['discount_percent'] as num? ?? 0) > 0 ? ' (-${(e['discount_percent'] as num).toStringAsFixed(0)}%)' : ''}',
                           ),
-                        ),
-                      ),
+                          subtitle: Text(
+                            'Qty: $paidQty | FOC: $focQty | Stock Out: $totalQty | Unit: ${Formatters.money(unitPrice, symbol: currency)}',
+                          ),
+                          trailing: Text(
+                            Formatters.money(
+                              amount,
+                              symbol: currency,
+                            ),
+                          ),
+                        );
+                      },
                     )
                     .toList(),
               ),
@@ -103,6 +113,9 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
             ),
             Text(
               'Discount: ${Formatters.money((sale!['discount_amount'] as num? ?? 0) != 0 ? (sale!['discount_amount'] as num? ?? 0) : items.fold<double>(0, (double total, Map<String, Object?> item) => total + (item['discount_amount'] as num? ?? 0).toDouble()), symbol: currency)}',
+            ),
+            Text(
+              'Total FOC: ${items.fold<int>(0, (int total, Map<String, Object?> item) => total + (item['foc_quantity'] as num? ?? 0).toInt())}',
             ),
             Text(
               'Rebate: ${Formatters.money((sale!['rebate_amount'] as num? ?? 0), symbol: currency)}',
@@ -168,6 +181,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
         'logo_path': settings.voucherLogoPath,
         'paper_mm': '${settings.voucherPaperSizeMm}',
         'font_size': '${settings.voucherFontSize}',
+        'currency': settings.currencySymbol,
       },
       sale: sale!,
       items: items,
@@ -177,9 +191,9 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
   String _saleOptionLabel(String code) {
     switch (code) {
       case 'office_rule':
-        return 'Office Rule';
+        return 'Office FOC';
       case 'doctor_rule':
-        return 'Doctor Rule';
+        return 'Doctor Cashback';
       case 'cd2':
         return 'CD 2%';
       case 'dr_cashback':
