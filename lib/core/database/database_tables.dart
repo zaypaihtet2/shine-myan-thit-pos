@@ -3,6 +3,8 @@ class DatabaseTables {
   static const String categories = 'categories';
   static const String companies = 'companies';
   static const String customers = 'customers';
+  static const String purchases = 'purchase_entries';
+  static const String purchaseItems = 'purchase_items';
   static const String sales = 'sales';
   static const String saleItems = 'sale_items';
   static const String saleReturns = 'sale_returns';
@@ -56,6 +58,31 @@ class DatabaseTables {
       rebate_percent REAL NOT NULL DEFAULT 0,
       cashback_percent REAL NOT NULL DEFAULT 0,
       status TEXT DEFAULT 'active',
+      created_at TEXT,
+      updated_at TEXT
+    )''',
+    '''CREATE TABLE purchase_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchase_no TEXT NOT NULL UNIQUE,
+      supplier_company_id INTEGER,
+      supplier_name TEXT NOT NULL,
+      reference_no TEXT,
+      purchase_date TEXT NOT NULL,
+      total_amount REAL NOT NULL DEFAULT 0,
+      note TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    )''',
+    '''CREATE TABLE purchase_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchase_entry_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      product_name TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      unit_cost REAL NOT NULL DEFAULT 0,
+      line_total REAL NOT NULL DEFAULT 0,
+      old_stock INTEGER NOT NULL DEFAULT 0,
+      new_stock INTEGER NOT NULL DEFAULT 0,
       created_at TEXT,
       updated_at TEXT
     )''',
