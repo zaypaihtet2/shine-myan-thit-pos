@@ -20,7 +20,7 @@ class ProductFormScreen extends StatefulWidget {
 
 class _ProductFormScreenState extends State<ProductFormScreen> {
   late final TextEditingController _name;
-  late final TextEditingController _barcode;
+  late final TextEditingController _expiryDate;
   late final TextEditingController _sku;
   late final TextEditingController _selling;
   late final TextEditingController _discountPercent;
@@ -38,7 +38,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     super.initState();
     final ProductModel? p = widget.product;
     _name = TextEditingController(text: p?.productName ?? '');
-    _barcode = TextEditingController(text: p?.barcode ?? '');
+    _expiryDate = TextEditingController(text: p?.expiryDate ?? '');
     _sku = TextEditingController(text: p?.sku ?? '');
     _selling = TextEditingController(text: (p?.sellingPrice ?? 0).toString());
     _focEnabled = p?.focEnabled ?? false;
@@ -106,37 +106,97 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _name,
-              decoration: const InputDecoration(labelText: 'Product Name'),
+              decoration: const InputDecoration(
+                labelText: 'Product Name',
+                prefixIcon: Icon(Icons.medication_outlined),
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Expanded(
                   child: TextField(
-                    controller: _barcode,
-                    decoration: const InputDecoration(labelText: 'Barcode'),
+                    controller: _expiryDate,
+                    readOnly: true,
+                    onTap: _pickExpiryDate,
+                    decoration: InputDecoration(
+                      labelText: 'Expiry Date',
+                      hintText: 'YYYY-MM-DD',
+                      helperText: 'Tap the calendar to choose the expiry date',
+                      prefixIcon: const Icon(Icons.event_outlined),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          if (_expiryDate.text.isNotEmpty)
+                            IconButton(
+                              tooltip: 'Clear expiry date',
+                              onPressed: () {
+                                setState(_expiryDate.clear);
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
+                          IconButton(
+                            tooltip: 'Choose expiry date',
+                            onPressed: _pickExpiryDate,
+                            icon: const Icon(Icons.calendar_month_outlined),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: _sku,
-                    decoration: const InputDecoration(labelText: 'SKU'),
+                    decoration: const InputDecoration(
+                      labelText: 'Internal Product Code (SKU) — Optional',
+                      hintText: 'Example: MED-001',
+                      helperText:
+                          'Your own short code for finding products. Leave blank if unused.',
+                      prefixIcon: Icon(Icons.tag_outlined),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _discountPercent,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               decoration: const InputDecoration(
-                labelText: 'Product Discount %',
+                labelText: 'Product Discount % — Optional',
+                hintText: '0',
+                helperText:
+                    'Use this to record a product promotion, such as 5% or 10%. Enter 0 when no discount is used.',
+                prefixIcon: Icon(Icons.percent_outlined),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(Icons.info_outline),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'SKU is only an optional internal product code; it is not a barcode. '
+                      'Product Discount % is also optional. Keep it at 0 when this shop does not use product-level promotions.',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: <Widget>[
                 Expanded(
@@ -178,27 +238,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     onChanged: (int? value) =>
                         setState(() => companyId = value),
                     decoration: const InputDecoration(
-                      labelText: 'Company/Brand',
+                      labelText: 'Company / Brand',
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _selling,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: const InputDecoration(
-                      labelText: 'Selling Price',
-                    ),
-                  ),
-                ),
-              ],
+            TextField(
+              controller: _selling,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Product Price',
+                prefixIcon: Icon(Icons.payments_outlined),
+              ),
             ),
             const SizedBox(height: 8),
             SwitchListTile(
@@ -208,7 +263,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               },
               contentPadding: EdgeInsets.zero,
               title: const Text('Enable FOC Rule'),
-              subtitle: const Text('Example: buy 10, get 1 free'),
+              subtitle: const Text('Example: buy 10, get 5 free'),
             ),
             if (_focEnabled)
               Row(
@@ -269,7 +324,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   void dispose() {
     _name.dispose();
-    _barcode.dispose();
+    _expiryDate.dispose();
     _sku.dispose();
     _selling.dispose();
     _discountPercent.dispose();
@@ -298,8 +353,44 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
   }
 
+  Future<void> _pickExpiryDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime initialDate =
+        DateTime.tryParse(_expiryDate.text.trim()) ?? now;
+    final DateTime? selected = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(DateTime(2000)) ? now : initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Select Product Expiry Date',
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _expiryDate.text =
+          '${selected.year.toString().padLeft(4, '0')}-'
+          '${selected.month.toString().padLeft(2, '0')}-'
+          '${selected.day.toString().padLeft(2, '0')}';
+    });
+  }
+
   Future<void> _save() async {
-    if (_name.text.trim().isEmpty) return;
+    if (_name.text.trim().isEmpty) {
+      _showMessage('Product name is required');
+      return;
+    }
+
+    final double discount = double.tryParse(_discountPercent.text) ?? 0;
+    if (discount < 0 || discount > 100) {
+      _showMessage('Product Discount % must be between 0 and 100');
+      return;
+    }
+
+    final int focBuyQty = int.tryParse(_focBuyQty.text) ?? 10;
+    final int focFreeQty = int.tryParse(_focFreeQty.text) ?? 1;
+    if (_focEnabled && (focBuyQty <= 0 || focFreeQty <= 0)) {
+      _showMessage('FOC Buy Qty and FOC Qty must be greater than zero');
+      return;
+    }
 
     final ProductProvider provider = context.read<ProductProvider>();
     await provider.save(
@@ -308,16 +399,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         productName: _name.text.trim(),
         categoryId: categoryId,
         companyId: companyId,
-        barcode: _barcode.text.trim().isEmpty ? null : _barcode.text.trim(),
+        expiryDate:
+            _expiryDate.text.trim().isEmpty ? null : _expiryDate.text.trim(),
         sku: _sku.text.trim().isEmpty ? null : _sku.text.trim(),
         imagePath: imagePath,
-        discountPercent: double.tryParse(_discountPercent.text) ?? 0,
+        discountPercent: discount,
         buyingPrice: double.tryParse(_selling.text) ?? 0,
         sellingPrice: double.tryParse(_selling.text) ?? 0,
         samePriceAsBuying: false,
         focEnabled: _focEnabled,
-        focBuyQty: int.tryParse(_focBuyQty.text) ?? 10,
-        focFreeQty: int.tryParse(_focFreeQty.text) ?? 1,
+        focBuyQty: focBuyQty,
+        focFreeQty: focFreeQty,
         stockQuantity: int.tryParse(_stock.text) ?? 0,
         lowStockAlertQuantity: int.tryParse(_lowStock.text) ?? 5,
       ),
@@ -326,5 +418,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     if (mounted) {
       Navigator.of(context).pop();
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 }
