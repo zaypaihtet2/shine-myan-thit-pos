@@ -80,7 +80,7 @@ class AppSidebar extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            'Shine Myan Thit',
+                            'Shine Myan Thit POS',
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
                                   color: Colors.white,
@@ -89,7 +89,7 @@ class AppSidebar extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Desktop retail suite',
+                            'Pharmacy sales & stock system',
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: Colors.white.withValues(alpha: 0.86),
