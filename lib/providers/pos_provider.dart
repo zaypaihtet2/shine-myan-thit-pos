@@ -5,13 +5,15 @@ import '../core/database/database_tables.dart';
 import '../models/product_model.dart';
 import 'company_provider.dart';
 
-enum SalePricingMode { normal, cd2, drCashback }
+enum SalePricingMode { normal, netPrice, cd2, drCashback }
 
 extension SalePricingModeX on SalePricingMode {
   String get code {
     switch (this) {
       case SalePricingMode.normal:
         return 'normal';
+      case SalePricingMode.netPrice:
+        return 'net_price';
       case SalePricingMode.cd2:
         return 'cd2';
       case SalePricingMode.drCashback:
@@ -23,6 +25,8 @@ extension SalePricingModeX on SalePricingMode {
     switch (this) {
       case SalePricingMode.normal:
         return 'Normal Price';
+      case SalePricingMode.netPrice:
+        return 'Net Price';
       case SalePricingMode.cd2:
         return 'CD 2%';
       case SalePricingMode.drCashback:
@@ -35,6 +39,7 @@ extension SalePricingModeX on SalePricingMode {
       case SalePricingMode.cd2:
         return 2;
       case SalePricingMode.normal:
+      case SalePricingMode.netPrice:
       case SalePricingMode.drCashback:
         return 0;
     }
@@ -57,6 +62,7 @@ class CartLine {
   double doctorCashbackAmount;
 
   int get focQty {
+    if (pricingMode == SalePricingMode.netPrice) return 0;
     if (!product.focEnabled) return 0;
     if (product.focBuyQty <= 0 || product.focFreeQty <= 0) return 0;
     return (qty ~/ product.focBuyQty) * product.focFreeQty;
@@ -114,17 +120,18 @@ class PosProvider extends ChangeNotifier {
 
   double get buyingTotal => cart.fold<double>(
     0,
-    (double total, CartLine line) =>
-        total + line.product.buyingPrice * line.stockOutQty,
+    (double total, CartLine line) => total + _lineInventoryCost(line),
   );
 
   double get grossProfit => cart.fold<double>(
     0,
-    (double total, CartLine line) =>
-        total + _lineCompanyCashbackAmount(line) + _linePriceUplift(line),
+    (double total, CartLine line) => total + _lineGrossProfit(line),
   );
 
-  double get netProfit => grossProfit - customerCashbackAmount;
+  double get netProfit => cart.fold<double>(
+    0,
+    (double total, CartLine line) => total + _lineNetProfit(line),
+  );
 
   double get officePayableAmount => finalTotal - companyCashbackAmount;
 
@@ -149,6 +156,13 @@ class PosProvider extends ChangeNotifier {
 
   double lineDoctorCashback(CartLine line) =>
       _lineCustomerCashbackAmount(line);
+
+  double lineEffectiveCost(CartLine line) => _lineEffectiveUnitCost(line);
+
+  double lineEstimatedProfit(CartLine line) => _lineNetProfit(line);
+
+  double lineSuggestedNetPrice(CartLine line) =>
+      _lineEffectiveUnitCost(line);
 
   void setCustomerCdPercent(double value) {
     customerCdPercent = value;
@@ -180,23 +194,31 @@ class PosProvider extends ChangeNotifier {
   }
 
   void setLinePricingMode(CartLine line, SalePricingMode mode) {
+    final SalePricingMode previousMode = line.pricingMode;
     line.pricingMode = mode;
-    if (mode == SalePricingMode.drCashback) {
-      line.customUnitPrice ??= line.product.sellingPrice;
-      if (line.doctorCashbackAmount == 0 && customerCashbackPercent > 0) {
-        line.doctorCashbackAmount =
-            _lineGrossSubtotal(line) * customerCashbackPercent / 100;
-      }
-    } else {
-      line.customUnitPrice = null;
-      line.doctorCashbackAmount = 0;
+
+    switch (mode) {
+      case SalePricingMode.netPrice:
+        line.customUnitPrice = _lineEffectiveUnitCost(line);
+        line.doctorCashbackAmount = 0;
+      case SalePricingMode.drCashback:
+        if (previousMode != SalePricingMode.drCashback) {
+          line.customUnitPrice = line.product.sellingPrice;
+          line.doctorCashbackAmount = customerCashbackPercent > 0
+              ? _lineGrossSubtotal(line) * customerCashbackPercent / 100
+              : 0;
+        }
+      case SalePricingMode.normal:
+      case SalePricingMode.cd2:
+        line.customUnitPrice = null;
+        line.doctorCashbackAmount = 0;
     }
     notifyListeners();
   }
 
   void setLineUnitPrice(CartLine line, double value) {
-    if (value < 0) {
-      throw Exception('Sale price cannot be negative');
+    if (value <= 0) {
+      throw Exception('Sale price must be greater than zero');
     }
     line.customUnitPrice = value;
     notifyListeners();
@@ -293,6 +315,13 @@ class PosProvider extends ChangeNotifier {
       throw Exception('Paid amount is less than total');
     }
     for (final CartLine line in cart) {
+      if ((line.pricingMode == SalePricingMode.netPrice ||
+              line.pricingMode == SalePricingMode.drCashback) &&
+          _lineUnitPrice(line) <= 0) {
+        throw Exception(
+          'Enter a valid sale price for ${line.product.productName}',
+        );
+      }
       if (line.pricingMode == SalePricingMode.drCashback &&
           line.doctorCashbackAmount > _lineFinalSubtotal(line)) {
         throw Exception(
@@ -316,12 +345,12 @@ class PosProvider extends ChangeNotifier {
       final double rebateAmount = _lineRebateAmount(line);
       final double lineFinalSubtotal = _lineFinalSubtotal(line);
       final double appliedUnitPrice = _lineUnitPrice(line);
+      final double effectiveUnitCost = _lineEffectiveUnitCost(line);
       final double companyCbPercent = _lineCompanyCashbackPercent(line);
       final double companyCbAmount = _lineCompanyCashbackAmount(line);
       final double customerCbPercent = _lineCustomerCashbackPercent(line);
       final double customerCbAmount = _lineCustomerCashbackAmount(line);
-      final double itemProfit =
-          companyCbAmount + _linePriceUplift(line) - customerCbAmount;
+      final double itemProfit = _lineNetProfit(line);
       return <String, Object?>{
         'product_id': line.product.id,
         'company_id': line.product.companyId,
@@ -334,8 +363,8 @@ class PosProvider extends ChangeNotifier {
         'discount_amount': legacyDiscountAmount,
         'rebate_percent': rebatePercent,
         'rebate_amount': rebateAmount,
-        'buying_price': line.product.buyingPrice,
-        'selling_price': line.product.sellingPrice,
+        'buying_price': effectiveUnitCost,
+        'selling_price': appliedUnitPrice,
         'unit_price_applied': appliedUnitPrice,
         'subtotal': lineFinalSubtotal,
         'customer_cashback_percent': customerCbPercent,
@@ -404,6 +433,7 @@ class PosProvider extends ChangeNotifier {
 
   int _lineFocQty(CartLine line, {int? paidQty}) {
     final int basePaid = paidQty ?? line.qty;
+    if (line.pricingMode == SalePricingMode.netPrice) return 0;
     if (!line.product.focEnabled) return 0;
     if (line.product.focBuyQty <= 0 || line.product.focFreeQty <= 0) return 0;
     return (basePaid ~/ line.product.focBuyQty) * line.product.focFreeQty;
@@ -415,7 +445,8 @@ class PosProvider extends ChangeNotifier {
   }
 
   double _lineUnitPrice(CartLine line) {
-    if (line.pricingMode == SalePricingMode.drCashback &&
+    if ((line.pricingMode == SalePricingMode.netPrice ||
+            line.pricingMode == SalePricingMode.drCashback) &&
         line.customUnitPrice != null) {
       return line.customUnitPrice!;
     }
@@ -430,6 +461,9 @@ class PosProvider extends ChangeNotifier {
   }
 
   String _lineSaleOptionCode(CartLine line) {
+    if (line.pricingMode == SalePricingMode.netPrice) {
+      return 'net_price';
+    }
     if (line.pricingMode == SalePricingMode.drCashback) {
       return 'dr_cashback';
     }
@@ -484,8 +518,25 @@ class PosProvider extends ChangeNotifier {
   double _lineCompanyCashbackAmount(CartLine line) =>
       _lineFinalSubtotal(line) * _lineCompanyCashbackPercent(line) / 100;
 
-  double _linePriceUplift(CartLine line) {
-    final double difference = _lineUnitPrice(line) - line.product.sellingPrice;
-    return difference > 0 ? difference * line.qty : 0;
+  double _lineEffectiveUnitCost(CartLine line) {
+    final ProductModel product = line.product;
+    if (!product.focEnabled ||
+        product.focBuyQty <= 0 ||
+        product.focFreeQty <= 0) {
+      return product.buyingPrice;
+    }
+    final int receivedQty = product.focBuyQty + product.focFreeQty;
+    return product.buyingPrice * product.focBuyQty / receivedQty;
   }
+
+  double _lineInventoryCost(CartLine line) =>
+      _lineEffectiveUnitCost(line) * _lineTotalQty(line);
+
+  double _lineGrossProfit(CartLine line) =>
+      _lineFinalSubtotal(line) +
+      _lineCompanyCashbackAmount(line) -
+      _lineInventoryCost(line);
+
+  double _lineNetProfit(CartLine line) =>
+      _lineGrossProfit(line) - _lineCustomerCashbackAmount(line);
 }
