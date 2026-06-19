@@ -51,6 +51,13 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final bool isCredit = '${sale!['payment_method'] ?? ''}' == 'Credit';
+    final double finalTotal = (sale!['final_total'] as num? ?? 0).toDouble();
+    final double paidAmount = (sale!['paid_amount'] as num? ?? 0).toDouble();
+    final double creditBalance = isCredit
+        ? (finalTotal - paidAmount).clamp(0, double.infinity).toDouble()
+        : 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Sale Detail - ${sale!['invoice_no']}'),
@@ -74,26 +81,43 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                 'Customer: ${sale!['customer_name']} (${sale!['customer_type'] ?? 'regular'})',
               ),
             Text('Payment: ${sale!['payment_method']}'),
+            if (isCredit)
+              Text(
+                'Outstanding Credit: ${Formatters.money(creditBalance, symbol: currency)}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             const SizedBox(height: 12),
             Expanded(
               child: ListView(
                 children: items
                     .map(
                       (Map<String, Object?> e) {
-                        final int paidQty = (e['paid_quantity'] as num? ?? e['quantity'] as num? ?? 0).toInt();
-                        final int focQty = (e['foc_quantity'] as num? ?? 0).toInt();
+                        final int paidQty =
+                            (e['paid_quantity'] as num? ??
+                                    e['quantity'] as num? ??
+                                    0)
+                                .toInt();
+                        final int focQty =
+                            (e['foc_quantity'] as num? ?? 0).toInt();
                         final int totalQty = paidQty + focQty;
-                        final double unitPrice = ((e['unit_price_applied'] as num? ?? 0).toDouble()) != 0
-                            ? (e['unit_price_applied'] as num).toDouble()
+                        final double appliedPrice =
+                            (e['unit_price_applied'] as num? ?? 0).toDouble();
+                        final double unitPrice = appliedPrice != 0
+                            ? appliedPrice
                             : (e['selling_price'] as num? ?? 0).toDouble();
-                        final double amount = (e['subtotal'] as num? ?? 0).toDouble();
+                        final double amount =
+                            (e['subtotal'] as num? ?? 0).toDouble();
+                        final double doctorCashback =
+                            (e['customer_cashback_amount'] as num? ?? 0)
+                                .toDouble();
                         return ListTile(
                           title: Text(
                             '${e['product_name']} [${_saleOptionLabel('${e['sale_option'] ?? 'normal'}')}]'
                             '${(e['discount_percent'] as num? ?? 0) > 0 ? ' (-${(e['discount_percent'] as num).toStringAsFixed(0)}%)' : ''}',
                           ),
                           subtitle: Text(
-                            'Qty: $paidQty | FOC: $focQty | Stock Out: $totalQty | Unit: ${Formatters.money(unitPrice, symbol: currency)}',
+                            'Qty: $paidQty | FOC: $focQty | Stock Out: $totalQty | Unit: ${Formatters.money(unitPrice, symbol: currency)}'
+                            '${doctorCashback > 0 ? '\nDoctor Cashback: ${Formatters.money(doctorCashback, symbol: currency)}' : ''}',
                           ),
                           trailing: Text(
                             Formatters.money(
@@ -140,8 +164,13 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
               'Profit: ${Formatters.money((sale!['owner_keep_profit'] as num? ?? sale!['profit_amount'] as num? ?? 0), symbol: currency)}',
             ),
             Text(
-              'Total: ${Formatters.money((sale!['final_total'] as num? ?? 0), symbol: currency)}',
+              'Total: ${Formatters.money(finalTotal, symbol: currency)}',
             ),
+            if (isCredit)
+              Text(
+                'Balance: ${Formatters.money(creditBalance, symbol: currency)}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             const SizedBox(height: 8),
             if (returns.isNotEmpty) ...<Widget>[
               const Divider(),
@@ -193,11 +222,10 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
       case 'office_rule':
         return 'Office FOC';
       case 'doctor_rule':
+      case 'dr_cashback':
         return 'Doctor Cashback';
       case 'cd2':
         return 'CD 2%';
-      case 'dr_cashback':
-        return 'DR Cashback';
       default:
         return 'Normal';
     }
