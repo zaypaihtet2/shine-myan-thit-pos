@@ -1,5 +1,8 @@
 class AppConstants {
-  static const String appTitle = 'Shine Myan Thit';
+  static const String appTitle = 'Shine Myan Thit POS';
+
+  // Keep the existing database filename so current shop data is not lost
+  // after the application display name is changed.
   static const String dbName = 'jar_jar_pos.db';
   static const int dbVersion = 8;
 
