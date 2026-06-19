@@ -13,9 +13,30 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> load() async {
     loading = true;
     notifyListeners();
-    final List<Map<String, Object?>> rows = await _db.query(
-      DatabaseTables.customers,
-      orderBy: 'name ASC',
+    final List<Map<String, Object?>> rows = await _db.rawQuery(
+      '''SELECT c.*,
+        COALESCE((
+          SELECT SUM(
+            CASE
+              WHEN s.final_total > s.paid_amount
+                THEN s.final_total - s.paid_amount
+              ELSE 0
+            END
+          )
+          FROM ${DatabaseTables.sales} s
+          WHERE s.customer_id = c.id
+            AND s.payment_method = 'Credit'
+            AND s.sale_type = 'sale'
+        ), 0)
+        - COALESCE((
+          SELECT SUM(sr.total_return_amount)
+          FROM ${DatabaseTables.saleReturns} sr
+          INNER JOIN ${DatabaseTables.sales} rs ON rs.id = sr.sale_id
+          WHERE rs.customer_id = c.id
+            AND rs.payment_method = 'Credit'
+        ), 0) AS credit_balance
+      FROM ${DatabaseTables.customers} c
+      ORDER BY c.name ASC''',
     );
     customers = rows.map(CustomerModel.fromMap).toList();
     loading = false;
