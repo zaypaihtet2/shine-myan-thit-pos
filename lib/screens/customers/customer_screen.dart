@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/utils/formatters.dart';
 import '../../models/customer_model.dart';
 import '../../providers/customer_provider.dart';
+import '../../providers/settings_provider.dart';
 
 class CustomerScreen extends StatefulWidget {
   const CustomerScreen({super.key});
@@ -32,6 +34,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   @override
   Widget build(BuildContext context) {
     final CustomerProvider provider = context.watch<CustomerProvider>();
+    final String currency = context.watch<SettingsProvider>().currencySymbol;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -67,7 +70,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Define rebate and cashback defaults by customer type.',
+                        'Define rebate, cashback defaults, and view outstanding credit.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.white.withValues(alpha: 0.88),
                         ),
@@ -171,7 +174,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                         decimal: true,
                       ),
                       decoration: const InputDecoration(
-                        labelText: 'Cashback %',
+                        labelText: 'Default Cashback %',
                       ),
                     ),
                   ),
@@ -202,10 +205,22 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       final CustomerModel c = provider.customers[i];
                       return Card(
                         child: ListTile(
+                          leading: CircleAvatar(
+                            child: Icon(
+                              c.type == 'doctor'
+                                  ? Icons.medical_services_outlined
+                                  : c.type == 'office'
+                                  ? Icons.business_outlined
+                                  : Icons.person_outline,
+                            ),
+                          ),
                           title: Text(c.name),
                           subtitle: Text(
-                            'Type: ${c.type} | Price: ${c.priceMode} (${c.pricePercent}%) | Rebate: ${c.rebatePercent}% | Cashback: ${c.cashbackPercent}%',
+                            'Type: ${c.type} | Price: ${c.priceMode} (${c.pricePercent}%)'
+                            '\nRebate: ${c.rebatePercent}% | Default Cashback: ${c.cashbackPercent}%'
+                            '\nOutstanding Credit: ${Formatters.money(c.creditBalance, symbol: currency)}',
                           ),
+                          isThreeLine: true,
                           trailing: Wrap(
                             spacing: 8,
                             children: <Widget>[
@@ -226,7 +241,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
                                 child: const Text('Edit'),
                               ),
                               OutlinedButton(
-                                onPressed: () => provider.delete(c.id!),
+                                onPressed: c.creditBalance > 0
+                                    ? null
+                                    : () => provider.delete(c.id!),
                                 child: const Text('Delete'),
                               ),
                             ],
