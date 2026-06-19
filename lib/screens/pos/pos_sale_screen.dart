@@ -105,7 +105,7 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Fast search, tap-to-add products, and simple checkout.',
+                              'Fast search, FOC stock deduction, credit sales, and adjustable doctor cashback.',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.88),
@@ -239,6 +239,7 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
+                      key: ValueKey<String>('payment-${pos.paymentMethod}'),
                       initialValue: pos.paymentMethod,
                       items: AppConstants.paymentMethods
                           .map(
@@ -248,14 +249,20 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                             ),
                           )
                           .toList(),
-                      onChanged: (String? v) =>
-                          pos.setPaymentMethod(v ?? 'Cash'),
+                      onChanged: (String? v) {
+                        final String method = v ?? 'Cash';
+                        pos.setPaymentMethod(method);
+                        if (method == 'Credit') {
+                          _paid.text = '0';
+                        }
+                      },
                       decoration: const InputDecoration(
                         labelText: 'Payment Method',
                       ),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int?>(
+                      key: ValueKey<String>('customer-${pos.customerId ?? 'walkin'}'),
                       initialValue: pos.customerId,
                       items: <DropdownMenuItem<int?>>[
                         const DropdownMenuItem<int?>(
@@ -265,7 +272,10 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                         ...customers.customers.map(
                           (CustomerModel c) => DropdownMenuItem<int?>(
                             value: c.id,
-                            child: Text('${c.name} (${c.type})'),
+                            child: Text(
+                              '${c.name} (${c.type}) • Credit ${Formatters.money(c.creditBalance, symbol: settings.currencySymbol)}',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ],
@@ -298,13 +308,17 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                           cashbackPercent: selected.cashbackPercent,
                         );
                       },
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Customer Profile',
+                        helperText: pos.isCreditSale
+                            ? 'A saved customer is required for Credit sales'
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _customer,
+                      enabled: !pos.isCreditSale,
                       onChanged: (String value) {
                         pos.setCustomerProfile(
                           id: null,
@@ -316,22 +330,56 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                           cashbackPercent: pos.customerCashbackPercent,
                         );
                       },
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Customer Name (optional)',
+                        helperText: pos.isCreditSale
+                            ? 'Select the saved customer above'
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _paid,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    if (!pos.isCreditSale)
+                      TextField(
+                        controller: _paid,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (String v) =>
+                            pos.setPaidAmount(double.tryParse(v) ?? 0),
+                        decoration: const InputDecoration(
+                          labelText: 'Paid Amount',
+                        ),
+                      )
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Credit sale: no Paid Amount is required. The full total will be added to the selected customer credit balance.',
+                                style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSecondaryContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      onChanged: (String v) =>
-                          pos.setPaidAmount(double.tryParse(v) ?? 0),
-                      decoration: const InputDecoration(
-                        labelText: 'Paid Amount',
-                      ),
-                    ),
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -417,13 +465,22 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                               symbol: settings.currencySymbol,
                             ),
                           ),
-                          _line(
-                            'Change',
-                            Formatters.money(
-                              pos.changeAmount,
-                              symbol: settings.currencySymbol,
+                          if (pos.isCreditSale)
+                            _line(
+                              'Amount on Credit',
+                              Formatters.money(
+                                pos.creditDueAmount,
+                                symbol: settings.currencySymbol,
+                              ),
+                            )
+                          else
+                            _line(
+                              'Change',
+                              Formatters.money(
+                                pos.changeAmount,
+                                symbol: settings.currencySymbol,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -484,12 +541,14 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
     final PosProvider pos = context.read<PosProvider>();
     final ProductProvider products = context.read<ProductProvider>();
     final SalesProvider sales = context.read<SalesProvider>();
+    final CustomerProvider customers = context.read<CustomerProvider>();
     try {
       final int saleId = await pos.saveSale();
       if (!mounted) return;
       _lastSaleId = saleId;
       await products.load();
       await sales.load();
+      await customers.load();
       if (!mounted) return;
       _paid.text = '0';
       _customer.clear();
@@ -528,6 +587,7 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
         'logo_path': settings.voucherLogoPath,
         'paper_mm': '${settings.voucherPaperSizeMm}',
         'font_size': '${settings.voucherFontSize}',
+        'currency': settings.currencySymbol,
       },
       sale: sale,
       items: items,
