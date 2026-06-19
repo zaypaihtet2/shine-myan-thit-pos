@@ -7,6 +7,7 @@ class CustomerModel {
     this.pricePercent = 0,
     this.rebatePercent = 0,
     this.cashbackPercent = 0,
+    this.creditBalance = 0,
     this.status = 'active',
     this.createdAt,
     this.updatedAt,
@@ -19,6 +20,7 @@ class CustomerModel {
   final double pricePercent;
   final double rebatePercent;
   final double cashbackPercent;
+  final double creditBalance;
   final String status;
   final String? createdAt;
   final String? updatedAt;
@@ -39,6 +41,7 @@ class CustomerModel {
   }
 
   factory CustomerModel.fromMap(Map<String, Object?> map) {
+    final double rawCredit = (map['credit_balance'] as num? ?? 0).toDouble();
     return CustomerModel(
       id: map['id'] as int?,
       name: '${map['name'] ?? ''}',
@@ -47,6 +50,7 @@ class CustomerModel {
       pricePercent: (map['price_percent'] as num? ?? 0).toDouble(),
       rebatePercent: (map['rebate_percent'] as num? ?? 0).toDouble(),
       cashbackPercent: (map['cashback_percent'] as num? ?? 0).toDouble(),
+      creditBalance: rawCredit < 0 ? 0 : rawCredit,
       status: '${map['status'] ?? 'active'}',
       createdAt: map['created_at'] as String?,
       updatedAt: map['updated_at'] as String?,
