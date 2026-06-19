@@ -44,11 +44,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: <Color>[
-                  const Color(0xFF0F5132),
-                  const Color(0xFF1F7A4D),
-                ],
+              gradient: const LinearGradient(
+                colors: <Color>[Color(0xFF0F5132), Color(0xFF1F7A4D)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -70,7 +67,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Define rebate, cashback defaults, and view outstanding credit.',
+                        'Set customer type, price rules, office rebate, doctor cashback defaults, and view outstanding credit.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.white.withValues(alpha: 0.88),
                         ),
@@ -82,114 +79,158 @@ class _CustomerScreenState extends State<CustomerScreen> {
             ),
           ),
           const SizedBox(height: 14),
+          const _CustomerFieldGuide(),
+          const SizedBox(height: 14),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
-              child: Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  SizedBox(
-                    width: 260,
-                    child: TextField(
-                      controller: _name,
-                      decoration: const InputDecoration(labelText: 'Name'),
+                  Text(
+                    _editingId == null ? 'Add Customer Profile' : 'Edit Customer Profile',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(
-                    width: 170,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _type,
-                      items: const <DropdownMenuItem<String>>[
-                        DropdownMenuItem<String>(
-                          value: 'regular',
-                          child: Text('Regular'),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 14,
+                    crossAxisAlignment: WrapCrossAlignment.start,
+                    children: <Widget>[
+                      SizedBox(
+                        width: 260,
+                        child: TextField(
+                          controller: _name,
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                            helperText: 'Customer, doctor, clinic, office, or pharmacy name.',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
                         ),
-                        DropdownMenuItem<String>(
-                          value: 'office',
-                          child: Text('Office'),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'doctor',
-                          child: Text('Doctor'),
-                        ),
-                      ],
-                      onChanged: (String? value) {
-                        setState(() => _type = value ?? 'regular');
-                      },
-                      decoration: const InputDecoration(labelText: 'Type'),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 220,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _priceMode,
-                      items: const <DropdownMenuItem<String>>[
-                        DropdownMenuItem<String>(
-                          value: 'normal',
-                          child: Text('Normal Price'),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'same_buying',
-                          child: Text('Same As Product Price'),
-                        ),
-                        DropdownMenuItem<String>(
-                          value: 'adjust_selling_percent',
-                          child: Text('Adjust Selling %'),
-                        ),
-                      ],
-                      onChanged: (String? value) {
-                        setState(() => _priceMode = value ?? 'normal');
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Price Mode',
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _pricePercent,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      SizedBox(
+                        width: 210,
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey<String>('customer-type-$_type'),
+                          initialValue: _type,
+                          items: const <DropdownMenuItem<String>>[
+                            DropdownMenuItem<String>(
+                              value: 'regular',
+                              child: Text('Regular Customer'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'office',
+                              child: Text('Office / Pharmacy'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'doctor',
+                              child: Text('Doctor'),
+                            ),
+                          ],
+                          onChanged: (String? value) {
+                            setState(() => _type = value ?? 'regular');
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Type',
+                            helperText: 'Used to identify which sale rule applies.',
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                        ),
                       ),
-                      decoration: const InputDecoration(labelText: 'Price %'),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _rebate,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      SizedBox(
+                        width: 270,
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey<String>('price-mode-$_priceMode'),
+                          initialValue: _priceMode,
+                          items: const <DropdownMenuItem<String>>[
+                            DropdownMenuItem<String>(
+                              value: 'normal',
+                              child: Text('Normal Product Price'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'same_buying',
+                              child: Text('Use Saved Product Price'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'adjust_selling_percent',
+                              child: Text('Adjust Product Price by %'),
+                            ),
+                          ],
+                          onChanged: (String? value) {
+                            setState(() {
+                              _priceMode = value ?? 'normal';
+                              if (_priceMode != 'adjust_selling_percent') {
+                                _pricePercent.text = '0';
+                              }
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Price Mode',
+                            helperText: 'Choose how the POS calculates this customer’s default price.',
+                            prefixIcon: Icon(Icons.price_change_outlined),
+                          ),
+                        ),
                       ),
-                      decoration: const InputDecoration(labelText: 'Rebate %'),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: _cashback,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      SizedBox(
+                        width: 210,
+                        child: TextField(
+                          controller: _pricePercent,
+                          enabled: _priceMode == 'adjust_selling_percent',
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Price Adjustment %',
+                            helperText: '10 = add 10%. Use 0 when no adjustment is needed.',
+                            prefixIcon: Icon(Icons.percent_outlined),
+                          ),
+                        ),
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Default Cashback %',
+                      SizedBox(
+                        width: 210,
+                        child: TextField(
+                          controller: _rebate,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Office Rebate %',
+                            helperText: 'Discount applied to Office sales. Example: 2 = 2%.',
+                            prefixIcon: Icon(Icons.discount_outlined),
+                          ),
+                        ),
                       ),
-                    ),
+                      SizedBox(
+                        width: 235,
+                        child: TextField(
+                          controller: _cashback,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Default Doctor Cashback %',
+                            helperText: 'Starting suggestion only; it can be adjusted per sale.',
+                            prefixIcon: Icon(Icons.redeem_outlined),
+                          ),
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: _save,
+                        icon: Icon(
+                          _editingId == null ? Icons.add : Icons.save_outlined,
+                        ),
+                        label: Text(_editingId == null ? 'Add' : 'Update'),
+                      ),
+                      if (_editingId != null)
+                        OutlinedButton(
+                          onPressed: _resetForm,
+                          child: const Text('Cancel'),
+                        ),
+                    ],
                   ),
-                  FilledButton.icon(
-                    onPressed: _save,
-                    icon: Icon(
-                      _editingId == null ? Icons.add : Icons.save_outlined,
-                    ),
-                    label: Text(_editingId == null ? 'Add' : 'Update'),
-                  ),
-                  if (_editingId != null)
-                    OutlinedButton(
-                      onPressed: _resetForm,
-                      child: const Text('Cancel'),
-                    ),
                 ],
               ),
             ),
@@ -202,23 +243,26 @@ class _CustomerScreenState extends State<CustomerScreen> {
                     itemCount: provider.customers.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (_, int i) {
-                      final CustomerModel c = provider.customers[i];
+                      final CustomerModel customer = provider.customers[i];
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(
                             child: Icon(
-                              c.type == 'doctor'
+                              customer.type == 'doctor'
                                   ? Icons.medical_services_outlined
-                                  : c.type == 'office'
-                                  ? Icons.business_outlined
-                                  : Icons.person_outline,
+                                  : customer.type == 'office'
+                                      ? Icons.business_outlined
+                                      : Icons.person_outline,
                             ),
                           ),
-                          title: Text(c.name),
+                          title: Text(
+                            customer.name,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
                           subtitle: Text(
-                            'Type: ${c.type} | Price: ${c.priceMode} (${c.pricePercent}%)'
-                            '\nRebate: ${c.rebatePercent}% | Default Cashback: ${c.cashbackPercent}%'
-                            '\nOutstanding Credit: ${Formatters.money(c.creditBalance, symbol: currency)}',
+                            'Type: ${_typeLabel(customer.type)} | Price Mode: ${_priceModeLabel(customer.priceMode)}'
+                            '\nPrice Adjustment: ${customer.pricePercent}% | Office Rebate: ${customer.rebatePercent}% | Default Doctor Cashback: ${customer.cashbackPercent}%'
+                            '\nOutstanding Credit: ${Formatters.money(customer.creditBalance, symbol: currency)}',
                           ),
                           isThreeLine: true,
                           trailing: Wrap(
@@ -227,23 +271,21 @@ class _CustomerScreenState extends State<CustomerScreen> {
                               FilledButton.tonal(
                                 onPressed: () {
                                   setState(() {
-                                    _editingId = c.id;
-                                    _name.text = c.name;
-                                    _type = c.type;
-                                    _priceMode = c.priceMode;
-                                    _pricePercent.text = c.pricePercent
-                                        .toString();
-                                    _rebate.text = c.rebatePercent.toString();
-                                    _cashback.text = c.cashbackPercent
-                                        .toString();
+                                    _editingId = customer.id;
+                                    _name.text = customer.name;
+                                    _type = customer.type;
+                                    _priceMode = customer.priceMode;
+                                    _pricePercent.text = customer.pricePercent.toString();
+                                    _rebate.text = customer.rebatePercent.toString();
+                                    _cashback.text = customer.cashbackPercent.toString();
                                   });
                                 },
                                 child: const Text('Edit'),
                               ),
                               OutlinedButton(
-                                onPressed: c.creditBalance > 0
+                                onPressed: customer.creditBalance > 0
                                     ? null
-                                    : () => provider.delete(c.id!),
+                                    : () => provider.delete(customer.id!),
                                 child: const Text('Delete'),
                               ),
                             ],
@@ -259,7 +301,24 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 
   Future<void> _save() async {
-    if (_name.text.trim().isEmpty) return;
+    if (_name.text.trim().isEmpty) {
+      _showMessage('Name is required');
+      return;
+    }
+
+    final double pricePercent = double.tryParse(_pricePercent.text) ?? 0;
+    final double rebatePercent = double.tryParse(_rebate.text) ?? 0;
+    final double cashbackPercent = double.tryParse(_cashback.text) ?? 0;
+
+    if (rebatePercent < 0 || rebatePercent > 100) {
+      _showMessage('Office Rebate % must be between 0 and 100');
+      return;
+    }
+    if (cashbackPercent < 0 || cashbackPercent > 100) {
+      _showMessage('Default Doctor Cashback % must be between 0 and 100');
+      return;
+    }
+
     final CustomerProvider provider = context.read<CustomerProvider>();
     await provider.save(
       CustomerModel(
@@ -267,9 +326,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
         name: _name.text.trim(),
         type: _type,
         priceMode: _priceMode,
-        pricePercent: double.tryParse(_pricePercent.text) ?? 0,
-        rebatePercent: double.tryParse(_rebate.text) ?? 0,
-        cashbackPercent: double.tryParse(_cashback.text) ?? 0,
+        pricePercent:
+            _priceMode == 'adjust_selling_percent' ? pricePercent : 0,
+        rebatePercent: rebatePercent,
+        cashbackPercent: cashbackPercent,
       ),
     );
     _resetForm();
@@ -285,5 +345,106 @@ class _CustomerScreenState extends State<CustomerScreen> {
       _rebate.text = '0';
       _cashback.text = '0';
     });
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String _typeLabel(String value) {
+    switch (value) {
+      case 'office':
+        return 'Office / Pharmacy';
+      case 'doctor':
+        return 'Doctor';
+      default:
+        return 'Regular Customer';
+    }
+  }
+
+  String _priceModeLabel(String value) {
+    switch (value) {
+      case 'adjust_selling_percent':
+        return 'Adjust Product Price by %';
+      case 'same_buying':
+        return 'Use Saved Product Price';
+      default:
+        return 'Normal Product Price';
+    }
+  }
+}
+
+class _CustomerFieldGuide extends StatelessWidget {
+  const _CustomerFieldGuide();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        leading: const Icon(Icons.help_outline),
+        title: const Text(
+          'What do these fields mean?',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: const Text('Open this guide when adding a customer profile.'),
+        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+        children: const <Widget>[
+          _GuideRow(
+            title: 'Name',
+            text: 'The customer, doctor, clinic, office, or pharmacy name.',
+          ),
+          _GuideRow(
+            title: 'Type',
+            text: 'Regular = normal customer, Office = rebate/office rules, Doctor = doctor cashback workflow.',
+          ),
+          _GuideRow(
+            title: 'Price Mode',
+            text: 'Normal uses the product price. Adjust Product Price by % changes the default price for this customer.',
+          ),
+          _GuideRow(
+            title: 'Price Adjustment %',
+            text: 'Used only with Adjust Product Price by %. Example: 10 means the product price increases by 10%.',
+          ),
+          _GuideRow(
+            title: 'Office Rebate %',
+            text: 'A percentage discount calculated for Office sales. Leave it at 0 when no rebate is used.',
+          ),
+          _GuideRow(
+            title: 'Default Doctor Cashback %',
+            text: 'A starting cashback suggestion for Doctor Cashback sales. The amount can still be changed on each sale.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuideRow extends StatelessWidget {
+  const _GuideRow({required this.title, required this.text});
+
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 205,
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
   }
 }
