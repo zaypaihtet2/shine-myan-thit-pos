@@ -45,11 +45,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "pos_jar_jar");
+    gtk_header_bar_set_title(header_bar, "Shine Myan Thit POS");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "pos_jar_jar");
+    gtk_window_set_title(window, "Shine Myan Thit POS");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -80,8 +80,8 @@ static void my_application_activate(GApplication* application) {
 
 // Implements GApplication::local_command_line.
 static gboolean my_application_local_command_line(GApplication* application,
-                                                  gchar*** arguments,
-                                                  int* exit_status) {
+                                                   gchar*** arguments,
+                                                   int* exit_status) {
   MyApplication* self = MY_APPLICATION(application);
   // Strip out the first argument as it is the binary name.
   self->dart_entrypoint_arguments = g_strdupv(*arguments + 1);
