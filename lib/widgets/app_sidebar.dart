@@ -4,6 +4,7 @@ enum AppPage {
   dashboard,
   pos,
   products,
+  purchases,
   categories,
   companies,
   customers,
@@ -42,10 +43,10 @@ class AppSidebar extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     colors: <Color>[
-                      const Color(0xFF0F5132),
-                      const Color(0xFF1F7A4D),
+                      Color(0xFF0F5132),
+                      Color(0xFF1F7A4D),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -68,7 +69,7 @@ class AppSidebar extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.storefront_outlined,
                         color: Colors.white,
                       ),
@@ -114,9 +115,11 @@ class AppSidebar extends StatelessWidget {
                     child: Text(
                       'Navigation',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        letterSpacing: 1.1,
-                      ),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                            letterSpacing: 1.1,
+                          ),
                     ),
                   ),
                 ),
@@ -136,6 +139,11 @@ class AppSidebar extends StatelessWidget {
                     icon: Icon(Icons.inventory_2_outlined),
                     selectedIcon: Icon(Icons.inventory_2_rounded),
                     label: Text('Products'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.local_shipping_outlined),
+                    selectedIcon: Icon(Icons.local_shipping_rounded),
+                    label: Text('Purchases'),
                   ),
                   NavigationRailDestination(
                     icon: Icon(Icons.category_outlined),
