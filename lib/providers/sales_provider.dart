@@ -25,8 +25,11 @@ class SalesProvider extends ChangeNotifier {
     final List<Object?> args = <Object?>[];
 
     if (invoiceQuery != null && invoiceQuery.trim().isNotEmpty) {
-      sql.write(' AND invoice_no LIKE ?');
-      args.add('%${invoiceQuery.trim()}%');
+      final String query = '%${invoiceQuery.trim()}%';
+      sql.write(
+        ' AND (invoice_no LIKE ? OR customer_name LIKE ? OR sale_date LIKE ?)',
+      );
+      args.addAll(<Object?>[query, query, query]);
     }
 
     if (from != null) {
@@ -39,7 +42,7 @@ class SalesProvider extends ChangeNotifier {
       args.add(to.toIso8601String());
     }
 
-    sql.write(' ORDER BY id DESC');
+    sql.write(' ORDER BY sale_date DESC, id DESC');
 
     final List<Map<String, Object?>> rows = await _db.rawQuery(
       sql.toString(),
