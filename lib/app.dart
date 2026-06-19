@@ -9,6 +9,7 @@ import 'providers/company_provider.dart';
 import 'providers/customer_provider.dart';
 import 'providers/pos_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/purchase_provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/sales_provider.dart';
 import 'providers/settings_provider.dart';
@@ -20,6 +21,7 @@ import 'screens/customers/customer_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/pos/pos_sale_screen.dart';
 import 'screens/products/product_list_screen.dart';
+import 'screens/purchases/purchase_entry_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/sales/sales_history_screen.dart';
 import 'screens/settings/settings_screen.dart';
@@ -47,6 +49,9 @@ class PosApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<ProductProvider>(
           create: (_) => ProductProvider(),
+        ),
+        ChangeNotifierProvider<PurchaseProvider>(
+          create: (_) => PurchaseProvider(),
         ),
         ChangeNotifierProvider<SalesProvider>(create: (_) => SalesProvider()),
         ChangeNotifierProvider<ReportProvider>(create: (_) => ReportProvider()),
@@ -106,6 +111,7 @@ class _RootGateState extends State<RootGate> {
       final CategoryProvider categories = context.read<CategoryProvider>();
       final CompanyProvider companies = context.read<CompanyProvider>();
       final ProductProvider products = context.read<ProductProvider>();
+      final PurchaseProvider purchases = context.read<PurchaseProvider>();
       final CustomerProvider customers = context.read<CustomerProvider>();
       final SalesProvider sales = context.read<SalesProvider>();
       final ReportProvider reports = context.read<ReportProvider>();
@@ -116,6 +122,7 @@ class _RootGateState extends State<RootGate> {
       await companies.load();
       await customers.load();
       await products.load();
+      await purchases.load();
       await sales.load();
       await reports.loadDashboard();
 
@@ -205,6 +212,8 @@ class _HomeShellState extends State<HomeShell> {
         return const PosSaleScreen();
       case AppPage.products:
         return const ProductListScreen();
+      case AppPage.purchases:
+        return const PurchaseEntryScreen();
       case AppPage.categories:
         return const CategoryScreen();
       case AppPage.companies:
