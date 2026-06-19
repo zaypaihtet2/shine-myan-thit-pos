@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "pos_jar_jar" "\0"
+            VALUE "CompanyName", "Shine Myan Thit" "\0"
+            VALUE "FileDescription", "Shine Myan Thit POS" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "pos_jar_jar" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "pos_jar_jar.exe" "\0"
-            VALUE "ProductName", "pos_jar_jar" "\0"
+            VALUE "InternalName", "shine_myan_thit_pos" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Shine Myan Thit. All rights reserved." "\0"
+            VALUE "OriginalFilename", "shine_myan_thit_pos.exe" "\0"
+            VALUE "ProductName", "Shine Myan Thit POS" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
@@ -110,11 +110,13 @@ END
 
 
 
+
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
+
 
 
 /////////////////////////////////////////////////////////////////////////////
