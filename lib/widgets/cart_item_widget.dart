@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/utils/formatters.dart';
 import '../providers/pos_provider.dart';
+import '../providers/settings_provider.dart';
 
 class CartItemWidget extends StatelessWidget {
   const CartItemWidget({
@@ -22,11 +24,15 @@ class CartItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final PosProvider pos = context.watch<PosProvider>();
+    final String currency = context.watch<SettingsProvider>().currencySymbol;
     final double unitPrice = pos.lineUnitPrice(line);
     final double lineTotal = pos.lineSubtotal(line);
     final int focQty = pos.lineFocQty(line);
     final int stockOutQty = pos.lineStockOutQty(line);
     final double doctorCashback = pos.lineDoctorCashback(line);
+    final double effectiveCost = pos.lineEffectiveCost(line);
+    final double estimatedProfit = pos.lineEstimatedProfit(line);
+    final bool isNetPrice = line.pricingMode == SalePricingMode.netPrice;
 
     return Card(
       child: Padding(
@@ -41,21 +47,36 @@ class CartItemWidget extends StatelessWidget {
                   Text(
                     line.product.productName,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${line.qty} x ${unitPrice.toStringAsFixed(2)}'
+                    '${line.qty} x ${Formatters.money(unitPrice, symbol: currency)}'
                     '${line.pricingMode.discountPercent > 0 ? ' (-${line.pricingMode.discountPercent.toStringAsFixed(0)}%)' : ''}'
-                    ' = ${lineTotal.toStringAsFixed(2)}',
+                    ' = ${Formatters.money(lineTotal, symbol: currency)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  if (focQty > 0) ...<Widget>[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Effective Cost / Unit: ${Formatters.money(effectiveCost, symbol: currency)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (isNetPrice) ...<Widget>[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Net Price Sale: No customer FOC | Stock Out: $stockOutQty',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ] else if (focQty > 0) ...<Widget>[
                     const SizedBox(height: 4),
                     Text(
                       'FOC: $focQty | Total Stock Out: $stockOutQty',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
@@ -63,13 +84,23 @@ class CartItemWidget extends StatelessWidget {
                   if (doctorCashback > 0) ...<Widget>[
                     const SizedBox(height: 4),
                     Text(
-                      'Doctor Cashback: ${doctorCashback.toStringAsFixed(2)}',
+                      'Doctor Cashback: ${Formatters.money(doctorCashback, symbol: currency)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Estimated Profit: ${Formatters.money(estimatedProfit, symbol: currency)}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: estimatedProfit < 0
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
                   Wrap(
                     spacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
@@ -90,17 +121,25 @@ class CartItemWidget extends StatelessWidget {
                         onChanged: (SalePricingMode? mode) async {
                           if (mode == null) return;
                           onModeChanged(mode);
-                          if (mode == SalePricingMode.drCashback &&
-                              context.mounted) {
+                          if (!context.mounted) return;
+                          if (mode == SalePricingMode.netPrice) {
+                            await _showNetPriceDialog(context);
+                          } else if (mode == SalePricingMode.drCashback) {
                             await _showDoctorCashbackDialog(context);
                           }
                         },
                       ),
+                      if (line.pricingMode == SalePricingMode.netPrice)
+                        TextButton.icon(
+                          onPressed: () => _showNetPriceDialog(context),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Adjust Net Price'),
+                        ),
                       if (line.pricingMode == SalePricingMode.drCashback)
                         TextButton.icon(
                           onPressed: () => _showDoctorCashbackDialog(context),
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          label: const Text('Adjust'),
+                          label: const Text('Adjust Cashback'),
                         ),
                     ],
                   ),
@@ -121,7 +160,7 @@ class CartItemWidget extends StatelessWidget {
                     ),
                     Text(
                       '${line.qty}',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     IconButton(
                       tooltip: 'Increase quantity',
@@ -141,6 +180,92 @@ class CartItemWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showNetPriceDialog(BuildContext context) async {
+    final PosProvider pos = context.read<PosProvider>();
+    final String currency = context.read<SettingsProvider>().currencySymbol;
+    final double suggested = pos.lineSuggestedNetPrice(line);
+    final TextEditingController salePrice = TextEditingController(
+      text: pos.lineUnitPrice(line).toStringAsFixed(2),
+    );
+
+    final bool? save = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Adjust Net Price Sale'),
+        content: SizedBox(
+          width: 430,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                'Normal Product Price: ${Formatters.money(line.product.sellingPrice, symbol: currency)}',
+              ),
+              if (line.product.focEnabled)
+                Text(
+                  'Supplier / Normal FOC Rule: Buy ${line.product.focBuyQty}, FOC ${line.product.focFreeQty}',
+                ),
+              Text(
+                'Calculated Net Cost / Unit: ${Formatters.money(suggested, symbol: currency)}',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Net Price mode does not give customer FOC. Only the sold quantity is deducted from stock.',
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: salePrice,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Net Sale Price Per Unit',
+                  helperText:
+                      'Suggested ${Formatters.money(suggested, symbol: currency)}. You can enter 35,000 or another price.',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+
+    if (save == true) {
+      final double? price = double.tryParse(salePrice.text.replaceAll(',', ''));
+      if (price == null || price <= 0) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enter a valid net sale price')),
+          );
+        }
+      } else {
+        try {
+          pos.setLineUnitPrice(line, price);
+        } catch (error) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$error')),
+            );
+          }
+        }
+      }
+    }
+
+    salePrice.dispose();
   }
 
   Future<void> _showDoctorCashbackDialog(BuildContext context) async {
@@ -212,10 +337,10 @@ class CartItemWidget extends StatelessWidget {
         try {
           pos.setLineUnitPrice(line, price);
           pos.setLineDoctorCashbackAmount(line, amount);
-        } catch (e) {
+        } catch (error) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('$e')),
+              SnackBar(content: Text('$error')),
             );
           }
         }
