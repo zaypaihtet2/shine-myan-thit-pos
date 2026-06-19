@@ -22,11 +22,11 @@ extension SalePricingModeX on SalePricingMode {
   String get label {
     switch (this) {
       case SalePricingMode.normal:
-        return 'Normal';
+        return 'Normal Price';
       case SalePricingMode.cd2:
         return 'CD 2%';
       case SalePricingMode.drCashback:
-        return 'DR Cashback';
+        return 'Doctor Cashback';
     }
   }
 
@@ -39,16 +39,6 @@ extension SalePricingModeX on SalePricingMode {
         return 0;
     }
   }
-
-  bool get includesCompanyCashback {
-    switch (this) {
-      case SalePricingMode.drCashback:
-        return true;
-      case SalePricingMode.normal:
-      case SalePricingMode.cd2:
-        return false;
-    }
-  }
 }
 
 class CartLine {
@@ -56,16 +46,23 @@ class CartLine {
     required this.product,
     this.qty = 1,
     this.pricingMode = SalePricingMode.normal,
+    this.customUnitPrice,
+    this.doctorCashbackAmount = 0,
   });
 
   final ProductModel product;
   int qty;
   SalePricingMode pricingMode;
+  double? customUnitPrice;
+  double doctorCashbackAmount;
 
-  double get grossSubtotal => product.sellingPrice * qty;
-  double get discountPercent => pricingMode.discountPercent;
-  double get discountAmount => grossSubtotal * discountPercent / 100;
-  double get subtotal => grossSubtotal - discountAmount;
+  int get focQty {
+    if (!product.focEnabled) return 0;
+    if (product.focBuyQty <= 0 || product.focFreeQty <= 0) return 0;
+    return (qty ~/ product.focBuyQty) * product.focFreeQty;
+  }
+
+  int get stockOutQty => qty + focQty;
 }
 
 class PosProvider extends ChangeNotifier {
@@ -85,6 +82,8 @@ class PosProvider extends ChangeNotifier {
   double customerCdPercent = 0;
   String paymentMethod = 'Cash';
   double paidAmount = 0;
+
+  bool get isCreditSale => paymentMethod == 'Credit';
 
   double get subtotal => cart.fold<double>(
     0,
@@ -106,21 +105,26 @@ class PosProvider extends ChangeNotifier {
     (double total, CartLine line) => total + _lineCustomerCashbackAmount(line),
   );
 
-  double get companyCashbackAmount {
-    double total = 0;
-    for (final CartLine line in cart) {
-      total += _lineCompanyCashbackAmount(line);
-    }
-    return total;
-  }
+  double get companyCashbackAmount => cart.fold<double>(
+    0,
+    (double total, CartLine line) => total + _lineCompanyCashbackAmount(line),
+  );
 
   double get finalTotal => subtotal - rebateAmount;
 
-  double get buyingTotal => 0;
+  double get buyingTotal => cart.fold<double>(
+    0,
+    (double total, CartLine line) =>
+        total + line.product.buyingPrice * line.stockOutQty,
+  );
 
-  double get grossProfit => companyCashbackAmount;
+  double get grossProfit => cart.fold<double>(
+    0,
+    (double total, CartLine line) =>
+        total + _lineCompanyCashbackAmount(line) + _linePriceUplift(line),
+  );
 
-  double get netProfit => companyCashbackAmount;
+  double get netProfit => grossProfit - customerCashbackAmount;
 
   double get officePayableAmount => finalTotal - companyCashbackAmount;
 
@@ -131,7 +135,20 @@ class PosProvider extends ChangeNotifier {
     (int total, CartLine line) => total + _lineFocQty(line),
   );
 
-  double get changeAmount => paidAmount - finalTotal;
+  double get changeAmount => isCreditSale ? 0 : paidAmount - finalTotal;
+
+  double get creditDueAmount => isCreditSale ? finalTotal : 0;
+
+  double lineUnitPrice(CartLine line) => _lineUnitPrice(line);
+
+  double lineSubtotal(CartLine line) => _lineFinalSubtotal(line);
+
+  int lineFocQty(CartLine line) => _lineFocQty(line);
+
+  int lineStockOutQty(CartLine line) => _lineTotalQty(line);
+
+  double lineDoctorCashback(CartLine line) =>
+      _lineCustomerCashbackAmount(line);
 
   void setCustomerCdPercent(double value) {
     customerCdPercent = value;
@@ -164,15 +181,45 @@ class PosProvider extends ChangeNotifier {
 
   void setLinePricingMode(CartLine line, SalePricingMode mode) {
     line.pricingMode = mode;
+    if (mode == SalePricingMode.drCashback) {
+      line.customUnitPrice ??= line.product.sellingPrice;
+      if (line.doctorCashbackAmount == 0 && customerCashbackPercent > 0) {
+        line.doctorCashbackAmount =
+            _lineGrossSubtotal(line) * customerCashbackPercent / 100;
+      }
+    } else {
+      line.customUnitPrice = null;
+      line.doctorCashbackAmount = 0;
+    }
+    notifyListeners();
+  }
+
+  void setLineUnitPrice(CartLine line, double value) {
+    if (value < 0) {
+      throw Exception('Sale price cannot be negative');
+    }
+    line.customUnitPrice = value;
+    notifyListeners();
+  }
+
+  void setLineDoctorCashbackAmount(CartLine line, double value) {
+    if (value < 0) {
+      throw Exception('Doctor cashback cannot be negative');
+    }
+    line.doctorCashbackAmount = value;
     notifyListeners();
   }
 
   void setPaymentMethod(String value) {
     paymentMethod = value;
+    if (isCreditSale) {
+      paidAmount = 0;
+    }
     notifyListeners();
   }
 
   void setPaidAmount(double value) {
+    if (isCreditSale) return;
     paidAmount = value;
     notifyListeners();
   }
@@ -201,7 +248,7 @@ class PosProvider extends ChangeNotifier {
   void incQty(CartLine line) {
     if (_lineTotalQty(line, paidQty: line.qty + 1) >
         line.product.stockQuantity) {
-      throw Exception('Stock not enough');
+      throw Exception('Stock not enough including FOC quantity');
     }
     line.qty += 1;
     notifyListeners();
@@ -239,8 +286,24 @@ class PosProvider extends ChangeNotifier {
     if (cart.isEmpty) {
       throw Exception('Cart is empty');
     }
-    if (paidAmount < finalTotal) {
+    if (isCreditSale && customerId == null) {
+      throw Exception('Select a saved customer for a Credit sale');
+    }
+    if (!isCreditSale && paidAmount < finalTotal) {
       throw Exception('Paid amount is less than total');
+    }
+    for (final CartLine line in cart) {
+      if (line.pricingMode == SalePricingMode.drCashback &&
+          line.doctorCashbackAmount > _lineFinalSubtotal(line)) {
+        throw Exception(
+          'Doctor cashback is greater than the sale amount for ${line.product.productName}',
+        );
+      }
+      if (_lineTotalQty(line) > line.product.stockQuantity) {
+        throw Exception(
+          'Stock not enough for ${line.product.productName}, including FOC',
+        );
+      }
     }
 
     final String invoice = await _db.nextInvoiceNo();
@@ -257,7 +320,8 @@ class PosProvider extends ChangeNotifier {
       final double companyCbAmount = _lineCompanyCashbackAmount(line);
       final double customerCbPercent = _lineCustomerCashbackPercent(line);
       final double customerCbAmount = _lineCustomerCashbackAmount(line);
-      final double itemProfit = companyCbAmount;
+      final double itemProfit =
+          companyCbAmount + _linePriceUplift(line) - customerCbAmount;
       return <String, Object?>{
         'product_id': line.product.id,
         'company_id': line.product.companyId,
@@ -270,7 +334,7 @@ class PosProvider extends ChangeNotifier {
         'discount_amount': legacyDiscountAmount,
         'rebate_percent': rebatePercent,
         'rebate_amount': rebateAmount,
-        'buying_price': line.product.sellingPrice,
+        'buying_price': line.product.buyingPrice,
         'selling_price': line.product.sellingPrice,
         'unit_price_applied': appliedUnitPrice,
         'subtotal': lineFinalSubtotal,
@@ -290,6 +354,8 @@ class PosProvider extends ChangeNotifier {
     final double avgCustomerCashbackPercent = subtotal > 0
         ? customerCashbackAmount * 100 / subtotal
         : 0;
+    final double savedPaidAmount = isCreditSale ? 0 : paidAmount;
+    final double savedChangeAmount = isCreditSale ? 0 : changeAmount;
 
     final int saleId = await _db.saveSale(
       invoiceNo: invoice,
@@ -309,8 +375,8 @@ class PosProvider extends ChangeNotifier {
       officePayableAmount: officePayableAmount,
       ownerKeepProfit: ownerKeepProfit,
       finalTotal: finalTotal,
-      paidAmount: paidAmount,
-      changeAmount: changeAmount,
+      paidAmount: savedPaidAmount,
+      changeAmount: savedChangeAmount,
       paymentMethod: paymentMethod,
       profitAmount: netProfit,
     );
@@ -336,26 +402,23 @@ class PosProvider extends ChangeNotifier {
     return <String, Object?>{'sale': sale.first, 'items': items};
   }
 
-  int _lineFocQty(CartLine line) {
-    if (customerType != 'office') return 0;
+  int _lineFocQty(CartLine line, {int? paidQty}) {
+    final int basePaid = paidQty ?? line.qty;
     if (!line.product.focEnabled) return 0;
     if (line.product.focBuyQty <= 0 || line.product.focFreeQty <= 0) return 0;
-    return (line.qty ~/ line.product.focBuyQty) * line.product.focFreeQty;
+    return (basePaid ~/ line.product.focBuyQty) * line.product.focFreeQty;
   }
 
   int _lineTotalQty(CartLine line, {int? paidQty}) {
     final int basePaid = paidQty ?? line.qty;
-    if (customerType != 'office') return basePaid;
-    if (!line.product.focEnabled) return basePaid;
-    if (line.product.focBuyQty <= 0 || line.product.focFreeQty <= 0) {
-      return basePaid;
-    }
-    final int focQty =
-        (basePaid ~/ line.product.focBuyQty) * line.product.focFreeQty;
-    return basePaid + focQty;
+    return basePaid + _lineFocQty(line, paidQty: basePaid);
   }
 
   double _lineUnitPrice(CartLine line) {
+    if (line.pricingMode == SalePricingMode.drCashback &&
+        line.customUnitPrice != null) {
+      return line.customUnitPrice!;
+    }
     switch (customerPriceMode) {
       case 'same_buying':
         return line.product.sellingPrice;
@@ -367,19 +430,22 @@ class PosProvider extends ChangeNotifier {
   }
 
   String _lineSaleOptionCode(CartLine line) {
+    if (line.pricingMode == SalePricingMode.drCashback) {
+      return 'dr_cashback';
+    }
     if (customerType == 'office') {
       return 'office_rule';
     }
-    if (customerType == 'doctor') {
-      return 'doctor_rule';
+    if (line.pricingMode == SalePricingMode.cd2) {
+      return 'cd2';
     }
-    return line.pricingMode.code;
+    return 'normal';
   }
 
   double _lineGrossSubtotal(CartLine line) => _lineUnitPrice(line) * line.qty;
 
   double _lineLegacyDiscountPercent(CartLine line) {
-    if (customerType != 'regular') return 0;
+    if (line.pricingMode != SalePricingMode.cd2) return 0;
     return line.pricingMode.discountPercent;
   }
 
@@ -401,14 +467,15 @@ class PosProvider extends ChangeNotifier {
       _lineSubtotalBeforeRebate(line) - _lineRebateAmount(line);
 
   double _lineCustomerCashbackPercent(CartLine line) {
-    if (customerType != 'doctor') return 0;
-    return customerCashbackPercent;
+    final double base = _lineSubtotalBeforeRebate(line);
+    if (base <= 0) return 0;
+    return _lineCustomerCashbackAmount(line) * 100 / base;
   }
 
-  double _lineCustomerCashbackAmount(CartLine line) =>
-      _lineSubtotalBeforeRebate(line) *
-      _lineCustomerCashbackPercent(line) /
-      100;
+  double _lineCustomerCashbackAmount(CartLine line) {
+    if (line.pricingMode != SalePricingMode.drCashback) return 0;
+    return line.doctorCashbackAmount;
+  }
 
   double _lineCompanyCashbackPercent(CartLine line) {
     return _companyProvider.cashbackByCompanyId(line.product.companyId);
@@ -416,4 +483,9 @@ class PosProvider extends ChangeNotifier {
 
   double _lineCompanyCashbackAmount(CartLine line) =>
       _lineFinalSubtotal(line) * _lineCompanyCashbackPercent(line) / 100;
+
+  double _linePriceUplift(CartLine line) {
+    final double difference = _lineUnitPrice(line) - line.product.sellingPrice;
+    return difference > 0 ? difference * line.qty : 0;
+  }
 }
