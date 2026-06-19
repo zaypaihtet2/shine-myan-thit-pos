@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Shine Myan Thit POS for Windows
 
 on:
   push:
@@ -6,32 +6,61 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows:
+    name: Windows Release
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
-      - name: Flutter Version
+      - name: Show Flutter version
         run: flutter --version
 
-      - name: Install Dependencies
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Windows Release
+      - name: Analyze source
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Build Windows release
         run: flutter build windows --release
 
-      - name: Upload EXE Artifact
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          $releaseDir = "build/windows/x64/runner/Release"
+          $zipPath = "build/Shine-Myan-Thit-POS-Windows.zip"
+          if (-not (Test-Path $releaseDir)) {
+            throw "Windows release directory was not created: $releaseDir"
+          }
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+          Compress-Archive -Path "$releaseDir/*" -DestinationPath $zipPath -Force
+          Write-Host "Created $zipPath"
+
+      - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: windows-release
-          path: |
-            build/windows/x64/runner/Release/**
+          name: Shine-Myan-Thit-POS-Windows
+          path: build/Shine-Myan-Thit-POS-Windows.zip
           if-no-files-found: error
+          retention-days: 30
