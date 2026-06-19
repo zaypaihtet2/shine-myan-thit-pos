@@ -4,7 +4,7 @@ class ProductModel {
     required this.productName,
     this.categoryId,
     this.companyId,
-    this.barcode,
+    this.expiryDate,
     this.sku,
     this.imagePath,
     this.discountPercent = 0,
@@ -25,7 +25,10 @@ class ProductModel {
   final String productName;
   final int? categoryId;
   final int? companyId;
-  final String? barcode;
+
+  /// Stored in the legacy `barcode` database column so existing installations
+  /// can upgrade without a destructive database migration.
+  final String? expiryDate;
   final String? sku;
   final String? imagePath;
   final double discountPercent;
@@ -41,12 +44,20 @@ class ProductModel {
   final String? createdAt;
   final String? updatedAt;
 
+  bool get isExpired {
+    final DateTime? date = DateTime.tryParse(expiryDate ?? '');
+    if (date == null) return false;
+    final DateTime today = DateTime.now();
+    final DateTime startOfToday = DateTime(today.year, today.month, today.day);
+    return date.isBefore(startOfToday);
+  }
+
   ProductModel copyWith({
     int? id,
     String? productName,
     int? categoryId,
     int? companyId,
-    String? barcode,
+    String? expiryDate,
     String? sku,
     String? imagePath,
     double? discountPercent,
@@ -67,7 +78,7 @@ class ProductModel {
       productName: productName ?? this.productName,
       categoryId: categoryId ?? this.categoryId,
       companyId: companyId ?? this.companyId,
-      barcode: barcode ?? this.barcode,
+      expiryDate: expiryDate ?? this.expiryDate,
       sku: sku ?? this.sku,
       imagePath: imagePath ?? this.imagePath,
       discountPercent: discountPercent ?? this.discountPercent,
@@ -92,7 +103,8 @@ class ProductModel {
       'product_name': productName,
       'category_id': categoryId,
       'company_id': companyId,
-      'barcode': barcode,
+      // Keep using the existing column to avoid losing old product records.
+      'barcode': expiryDate,
       'sku': sku,
       'image_path': imagePath,
       'discount_percent': discountPercent,
@@ -116,7 +128,7 @@ class ProductModel {
       productName: '${map['product_name'] ?? ''}',
       categoryId: map['category_id'] as int?,
       companyId: map['company_id'] as int?,
-      barcode: map['barcode'] as String?,
+      expiryDate: map['barcode'] as String?,
       sku: map['sku'] as String?,
       imagePath: map['image_path'] as String?,
       discountPercent: (map['discount_percent'] as num? ?? 0).toDouble(),
