@@ -21,7 +21,10 @@ class ProductProvider extends ChangeNotifier {
   Future<void> load() async {
     loading = true;
     notifyListeners();
-    final List<Map<String, Object?>> rows = await _db.query(DatabaseTables.products, orderBy: 'product_name ASC');
+    final List<Map<String, Object?>> rows = await _db.query(
+      DatabaseTables.products,
+      orderBy: 'product_name ASC',
+    );
     products = rows.map(ProductModel.fromMap).toList();
     _applyFilter();
     loading = false;
@@ -51,9 +54,11 @@ class ProductProvider extends ChangeNotifier {
       final bool byQuery = query.isEmpty ||
           p.productName.toLowerCase().contains(query) ||
           (p.sku ?? '').toLowerCase().contains(query) ||
-          (p.barcode ?? '').toLowerCase().contains(query);
-      final bool byCategory = categoryFilter == null || p.categoryId == categoryFilter;
-      final bool byCompany = companyFilter == null || p.companyId == companyFilter;
+          (p.expiryDate ?? '').toLowerCase().contains(query);
+      final bool byCategory =
+          categoryFilter == null || p.categoryId == categoryFilter;
+      final bool byCompany =
+          companyFilter == null || p.companyId == companyFilter;
       return byQuery && byCategory && byCompany;
     }).toList();
   }
@@ -65,7 +70,8 @@ class ProductProvider extends ChangeNotifier {
     final Directory appDir = await getApplicationSupportDirectory();
     final Directory imageDir = Directory(p.join(appDir.path, 'product_images'));
     await imageDir.create(recursive: true);
-    final String fileName = '${DateTime.now().millisecondsSinceEpoch}_${p.basename(sourcePath)}';
+    final String fileName =
+        '${DateTime.now().millisecondsSinceEpoch}_${p.basename(sourcePath)}';
     final String targetPath = p.join(imageDir.path, fileName);
     await source.copy(targetPath);
     return targetPath;
@@ -80,7 +86,9 @@ class ProductProvider extends ChangeNotifier {
     if (model.id == null) {
       await _db.insert(DatabaseTables.products, map..remove('id'));
     } else {
-      await _db.update(DatabaseTables.products, map, 'id = ?', <Object?>[model.id!]);
+      await _db.update(DatabaseTables.products, map, 'id = ?', <Object?>[
+        model.id!,
+      ]);
     }
     await load();
   }
@@ -92,7 +100,10 @@ class ProductProvider extends ChangeNotifier {
 
   List<ProductModel> lowStockProducts() {
     return products
-        .where((ProductModel p) => p.stockQuantity <= p.lowStockAlertQuantity)
+        .where(
+          (ProductModel p) =>
+              p.stockQuantity <= p.lowStockAlertQuantity,
+        )
         .toList();
   }
 
@@ -102,7 +113,9 @@ class ProductProvider extends ChangeNotifier {
     required bool isStockIn,
     required String note,
   }) async {
-    final int newStock = isStockIn ? product.stockQuantity + qty : product.stockQuantity - qty;
+    final int newStock = isStockIn
+        ? product.stockQuantity + qty
+        : product.stockQuantity - qty;
     if (newStock < 0) {
       throw Exception('Cannot stock out below zero');
     }
