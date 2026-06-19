@@ -128,7 +128,7 @@ class ProductModel {
       productName: '${map['product_name'] ?? ''}',
       categoryId: map['category_id'] as int?,
       companyId: map['company_id'] as int?,
-      expiryDate: map['barcode'] as String?,
+      expiryDate: _parseExpiry(map['barcode']),
       sku: map['sku'] as String?,
       imagePath: map['image_path'] as String?,
       discountPercent: (map['discount_percent'] as num? ?? 0).toDouble(),
@@ -144,5 +144,15 @@ class ProductModel {
       createdAt: map['created_at'] as String?,
       updatedAt: map['updated_at'] as String?,
     );
+  }
+
+  static String? _parseExpiry(Object? value) {
+    final String text = '${value ?? ''}'.trim();
+    if (text.isEmpty) return null;
+    final DateTime? date = DateTime.tryParse(text);
+    if (date == null) return null;
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 }
