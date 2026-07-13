@@ -678,9 +678,12 @@ class DatabaseHelper {
           .toSet();
 
       final List<Map<String, Object?>> companySeeds = <Map<String, Object?>>[
-        <String, Object?>{'name': 'Elegon', 'cashback_percent': 5.0},
-        <String, Object?>{'name': 'Shwe Li Maw', 'cashback_percent': 5.0},
-        <String, Object?>{'name': 'Green Land', 'cashback_percent': 12.0},
+        <String, Object?>{'name': 'Myanmar Pharma', 'cashback_percent': 5.0},
+        <String, Object?>{'name': 'Shwe Pharma', 'cashback_percent': 5.0},
+        <String, Object?>{
+          'name': 'Green Cross Pharma',
+          'cashback_percent': 12.0,
+        },
       ];
 
       for (final Map<String, Object?> company in companySeeds) {
@@ -696,6 +699,28 @@ class DatabaseHelper {
         }
       }
 
+      final List<Map<String, Object?>> categoryRows = await txn.query(
+        DatabaseTables.categories,
+        orderBy: 'id ASC',
+      );
+      final Set<String> categoryNames = categoryRows
+          .map(
+            (Map<String, Object?> row) => '${row['name'] ?? ''}'.toLowerCase(),
+          )
+          .toSet();
+      for (final String categoryName in <String>[
+        'Medicine',
+        'Medical Supplies',
+      ]) {
+        if (!categoryNames.contains(categoryName.toLowerCase())) {
+          await txn.insert(DatabaseTables.categories, <String, Object?>{
+            'name': categoryName,
+            'status': 'active',
+            'created_at': now,
+            'updated_at': now,
+          });
+        }
+      }
       final List<Map<String, Object?>> categories = await txn.query(
         DatabaseTables.categories,
         orderBy: 'id ASC',
@@ -739,9 +764,9 @@ class DatabaseHelper {
 
       final List<Map<String, Object?>> demoProducts = <Map<String, Object?>>[
         <String, Object?>{
-          'product_name': 'Premium Cooking Oil 1L',
-          'category': 'Food',
-          'company': 'Elegon',
+          'product_name': 'Paracetamol 500mg (100 tablets)',
+          'category': 'Medicine',
+          'company': 'Myanmar Pharma',
           'barcode': '111000111',
           'sku': 'OIL-001',
           'discount_percent': 5,
@@ -751,9 +776,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 5,
         },
         <String, Object?>{
-          'product_name': 'Instant Coffee Mix',
-          'category': 'Drink',
-          'company': 'Shwe Li Maw',
+          'product_name': 'Amoxicillin 500mg (Capsules)',
+          'category': 'Medicine',
+          'company': 'Shwe Pharma',
           'barcode': '222000222',
           'sku': 'COF-001',
           'discount_percent': 0,
@@ -763,9 +788,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 10,
         },
         <String, Object?>{
-          'product_name': 'Green Tea 30 Pack',
-          'category': 'Drink',
-          'company': 'Green Land',
+          'product_name': 'Vitamin C 500mg (100 tablets)',
+          'category': 'Medicine',
+          'company': 'Green Cross Pharma',
           'barcode': '333000333',
           'sku': 'TEA-001',
           'discount_percent': 10,
@@ -775,9 +800,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 8,
         },
         <String, Object?>{
-          'product_name': 'Chocolate Biscuit',
-          'category': 'Food',
-          'company': 'Elegon',
+          'product_name': 'Omeprazole 20mg (Capsules)',
+          'category': 'Medicine',
+          'company': 'Myanmar Pharma',
           'barcode': '444000444',
           'sku': 'BIS-001',
           'discount_percent': 0,
@@ -787,9 +812,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 20,
         },
         <String, Object?>{
-          'product_name': 'Strawberry Jam 250g',
-          'category': 'Food',
-          'company': 'Shwe Li Maw',
+          'product_name': 'Cetirizine 10mg (Tablets)',
+          'category': 'Medicine',
+          'company': 'Shwe Pharma',
           'barcode': '555000555',
           'sku': 'JAM-001',
           'discount_percent': 8,
@@ -799,9 +824,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 8,
         },
         <String, Object?>{
-          'product_name': 'Hand Wash Lemon 500ml',
-          'category': 'Cosmetic',
-          'company': 'Green Land',
+          'product_name': 'ORS Sachet (Orange)',
+          'category': 'Medicine',
+          'company': 'Green Cross Pharma',
           'barcode': '666000666',
           'sku': 'COS-001',
           'discount_percent': 0,
@@ -811,9 +836,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 10,
         },
         <String, Object?>{
-          'product_name': 'Face Powder Natural',
-          'category': 'Cosmetic',
-          'company': 'Elegon',
+          'product_name': 'Cough Syrup 100ml',
+          'category': 'Medicine',
+          'company': 'Myanmar Pharma',
           'barcode': '777000777',
           'sku': 'COS-002',
           'discount_percent': 12,
@@ -823,9 +848,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 6,
         },
         <String, Object?>{
-          'product_name': 'Phone USB Cable Type-C',
-          'category': 'Phone Item',
-          'company': 'Shwe Li Maw',
+          'product_name': 'Antacid Tablets (Strip)',
+          'category': 'Medicine',
+          'company': 'Shwe Pharma',
           'barcode': '888000888',
           'sku': 'PHN-001',
           'discount_percent': 0,
@@ -835,9 +860,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 12,
         },
         <String, Object?>{
-          'product_name': 'Power Adapter 20W',
-          'category': 'Phone Item',
-          'company': 'Green Land',
+          'product_name': 'Mefenamic Acid 500mg',
+          'category': 'Medicine',
+          'company': 'Green Cross Pharma',
           'barcode': '999000999',
           'sku': 'PHN-002',
           'discount_percent': 0,
@@ -847,9 +872,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 6,
         },
         <String, Object?>{
-          'product_name': 'Pain Relief Tablet 10s',
+          'product_name': 'Insulin Syringe 1ml',
           'category': 'Medicine',
-          'company': 'Elegon',
+          'company': 'Myanmar Pharma',
           'barcode': '101000101',
           'sku': 'MED-001',
           'discount_percent': 0,
@@ -859,9 +884,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 25,
         },
         <String, Object?>{
-          'product_name': 'Vitamin C 20s',
+          'product_name': 'Alcohol Swab (100 pieces)',
           'category': 'Medicine',
-          'company': 'Green Land',
+          'company': 'Green Cross Pharma',
           'barcode': '102000102',
           'sku': 'MED-002',
           'discount_percent': 5,
@@ -871,9 +896,9 @@ class DatabaseHelper {
           'low_stock_alert_quantity': 15,
         },
         <String, Object?>{
-          'product_name': 'Hair Clip Set',
-          'category': 'Accessories',
-          'company': 'Shwe Li Maw',
+          'product_name': 'Disposable Face Mask (50 pieces)',
+          'category': 'Medical Supplies',
+          'company': 'Shwe Pharma',
           'barcode': '103000103',
           'sku': 'ACC-001',
           'discount_percent': 0,
@@ -911,139 +936,152 @@ class DatabaseHelper {
         orderBy: 'id ASC',
         limit: 2,
       );
+      int demoStock1 = productRows.length >= 2
+          ? (productRows[0]['stock_quantity'] as int? ?? 0)
+          : 0;
+      int demoStock2 = productRows.length >= 2
+          ? (productRows[1]['stock_quantity'] as int? ?? 0)
+          : 0;
       if (productRows.length >= 2 &&
           (settings['demo_data_seeded'] ?? '0') != '1') {
-        final DateTime nowDate = DateTime.now();
-        final String datePrefix =
-            '${nowDate.year.toString().padLeft(4, '0')}${nowDate.month.toString().padLeft(2, '0')}${nowDate.day.toString().padLeft(2, '0')}';
-        final List<Map<String, Object?>> invRows = await txn.rawQuery(
-          'SELECT COUNT(*) AS c FROM ${DatabaseTables.sales} WHERE invoice_no LIKE ?',
-          <Object?>['INV-$datePrefix-%'],
-        );
-        final int count = (invRows.first['c'] as int? ?? 0) + 1;
-        final String invoice = Formatters.invoiceNo(count, nowDate);
-        const int q1 = 2;
-        const int q2 = 3;
-        final double p1Sell = (productRows[0]['selling_price'] as num? ?? 0)
-            .toDouble();
-        final double p2Sell = (productRows[1]['selling_price'] as num? ?? 0)
-            .toDouble();
-        final double p1Buy = (productRows[0]['buying_price'] as num? ?? 0)
-            .toDouble();
-        final double p2Buy = (productRows[1]['buying_price'] as num? ?? 0)
-            .toDouble();
-        final double p1DiscountPercent =
-            (productRows[0]['discount_percent'] as num? ?? 0).toDouble();
-        final double p2DiscountPercent =
-            (productRows[1]['discount_percent'] as num? ?? 0).toDouble();
-        final double p1DiscountAmount = p1Sell * q1 * p1DiscountPercent / 100;
-        final double p2DiscountAmount = p2Sell * q2 * p2DiscountPercent / 100;
+        for (int dayOffset = 6; dayOffset >= 0; dayOffset--) {
+          final DateTime nowDate = DateTime.now().subtract(
+            Duration(days: dayOffset),
+          );
+          final String datePrefix =
+              '${nowDate.year.toString().padLeft(4, '0')}${nowDate.month.toString().padLeft(2, '0')}${nowDate.day.toString().padLeft(2, '0')}';
+          final List<Map<String, Object?>> invRows = await txn.rawQuery(
+            'SELECT COUNT(*) AS c FROM ${DatabaseTables.sales} WHERE invoice_no LIKE ?',
+            <Object?>['INV-$datePrefix-%'],
+          );
+          final int count = (invRows.first['c'] as int? ?? 0) + 1;
+          final String invoice = Formatters.invoiceNo(count, nowDate);
+          const int q1 = 2;
+          const int q2 = 3;
+          final double p1Sell = (productRows[0]['selling_price'] as num? ?? 0)
+              .toDouble();
+          final double p2Sell = (productRows[1]['selling_price'] as num? ?? 0)
+              .toDouble();
+          final double p1Buy = (productRows[0]['buying_price'] as num? ?? 0)
+              .toDouble();
+          final double p2Buy = (productRows[1]['buying_price'] as num? ?? 0)
+              .toDouble();
+          final double p1DiscountPercent =
+              (productRows[0]['discount_percent'] as num? ?? 0).toDouble();
+          final double p2DiscountPercent =
+              (productRows[1]['discount_percent'] as num? ?? 0).toDouble();
+          final double p1DiscountAmount = p1Sell * q1 * p1DiscountPercent / 100;
+          final double p2DiscountAmount = p2Sell * q2 * p2DiscountPercent / 100;
 
-        final double subtotal =
-            (p1Sell * q1 - p1DiscountAmount) + (p2Sell * q2 - p2DiscountAmount);
-        final double customerCdPercent = 2;
-        final double customerCdAmount = subtotal * (customerCdPercent / 100);
-        const double discount = 500;
-        final double cbPercent =
-            (companies.first['cashback_percent'] as num? ?? 0).toDouble();
-        final double cashback = subtotal * cbPercent / 100;
-        final double finalTotal = subtotal - discount - customerCdAmount;
-        final double profit = cashback;
+          final double subtotal =
+              (p1Sell * q1 - p1DiscountAmount) +
+              (p2Sell * q2 - p2DiscountAmount);
+          final double customerCdPercent = 2;
+          final double customerCdAmount = subtotal * (customerCdPercent / 100);
+          const double discount = 500;
+          final double cbPercent =
+              (companies.first['cashback_percent'] as num? ?? 0).toDouble();
+          final double cashback = subtotal * cbPercent / 100;
+          final double finalTotal = subtotal - discount - customerCdAmount;
+          final double profit = cashback;
 
-        final int saleId = await txn
-            .insert(DatabaseTables.sales, <String, Object?>{
-              'invoice_no': invoice,
-              'sale_type': 'sale',
-              'reference_sale_id': null,
-              'subtotal': subtotal,
-              'discount_amount': discount,
-              'customer_cd_percent': customerCdPercent,
-              'customer_cd_amount': customerCdAmount,
-              'company_cashback_amount': cashback,
-              'final_total': finalTotal,
-              'paid_amount': finalTotal,
-              'change_amount': 0,
-              'payment_method': 'Cash',
-              'profit_amount': profit,
-              'sale_date': now,
-              'created_at': now,
-              'updated_at': now,
-            });
+          final int saleId = await txn
+              .insert(DatabaseTables.sales, <String, Object?>{
+                'invoice_no': invoice,
+                'sale_type': 'sale',
+                'reference_sale_id': null,
+                'subtotal': subtotal,
+                'discount_amount': discount,
+                'customer_cd_percent': customerCdPercent,
+                'customer_cd_amount': customerCdAmount,
+                'company_cashback_amount': cashback,
+                'final_total': finalTotal,
+                'paid_amount': finalTotal,
+                'change_amount': 0,
+                'payment_method': 'Cash',
+                'profit_amount': profit,
+                'sale_date': nowDate.toIso8601String(),
+                'created_at': now,
+                'updated_at': now,
+              });
 
-        await txn.insert(DatabaseTables.saleItems, <String, Object?>{
-          'sale_id': saleId,
-          'product_id': productRows[0]['id'],
-          'company_id': productRows[0]['company_id'],
-          'product_name': productRows[0]['product_name'],
-          'quantity': q1,
-          'discount_percent': p1DiscountPercent,
-          'discount_amount': p1DiscountAmount,
-          'buying_price': p1Buy,
-          'selling_price': p1Sell,
-          'subtotal': p1Sell * q1 - p1DiscountAmount,
-          'company_cashback_percent': cbPercent,
-          'company_cashback_amount':
-              (p1Sell * q1 - p1DiscountAmount) * cbPercent / 100,
-          'profit_amount': (p1Sell * q1 - p1DiscountAmount) * cbPercent / 100,
-          'created_at': now,
-          'updated_at': now,
-        });
+          await txn.insert(DatabaseTables.saleItems, <String, Object?>{
+            'sale_id': saleId,
+            'product_id': productRows[0]['id'],
+            'company_id': productRows[0]['company_id'],
+            'product_name': productRows[0]['product_name'],
+            'quantity': q1,
+            'discount_percent': p1DiscountPercent,
+            'discount_amount': p1DiscountAmount,
+            'buying_price': p1Buy,
+            'selling_price': p1Sell,
+            'subtotal': p1Sell * q1 - p1DiscountAmount,
+            'company_cashback_percent': cbPercent,
+            'company_cashback_amount':
+                (p1Sell * q1 - p1DiscountAmount) * cbPercent / 100,
+            'profit_amount': (p1Sell * q1 - p1DiscountAmount) * cbPercent / 100,
+            'created_at': now,
+            'updated_at': now,
+          });
 
-        await txn.insert(DatabaseTables.saleItems, <String, Object?>{
-          'sale_id': saleId,
-          'product_id': productRows[1]['id'],
-          'company_id': productRows[1]['company_id'],
-          'product_name': productRows[1]['product_name'],
-          'quantity': q2,
-          'discount_percent': p2DiscountPercent,
-          'discount_amount': p2DiscountAmount,
-          'buying_price': p2Buy,
-          'selling_price': p2Sell,
-          'subtotal': p2Sell * q2 - p2DiscountAmount,
-          'company_cashback_percent': cbPercent,
-          'company_cashback_amount':
-              (p2Sell * q2 - p2DiscountAmount) * cbPercent / 100,
-          'profit_amount': (p2Sell * q2 - p2DiscountAmount) * cbPercent / 100,
-          'created_at': now,
-          'updated_at': now,
-        });
+          await txn.insert(DatabaseTables.saleItems, <String, Object?>{
+            'sale_id': saleId,
+            'product_id': productRows[1]['id'],
+            'company_id': productRows[1]['company_id'],
+            'product_name': productRows[1]['product_name'],
+            'quantity': q2,
+            'discount_percent': p2DiscountPercent,
+            'discount_amount': p2DiscountAmount,
+            'buying_price': p2Buy,
+            'selling_price': p2Sell,
+            'subtotal': p2Sell * q2 - p2DiscountAmount,
+            'company_cashback_percent': cbPercent,
+            'company_cashback_amount':
+                (p2Sell * q2 - p2DiscountAmount) * cbPercent / 100,
+            'profit_amount': (p2Sell * q2 - p2DiscountAmount) * cbPercent / 100,
+            'created_at': now,
+            'updated_at': now,
+          });
 
-        final int oldStock1 = productRows[0]['stock_quantity'] as int? ?? 0;
-        final int oldStock2 = productRows[1]['stock_quantity'] as int? ?? 0;
-        final int newStock1 = oldStock1 - q1;
-        final int newStock2 = oldStock2 - q2;
+          final int oldStock1 = demoStock1;
+          final int oldStock2 = demoStock2;
+          final int newStock1 = oldStock1 - q1;
+          final int newStock2 = oldStock2 - q2;
+          demoStock1 = newStock1;
+          demoStock2 = newStock2;
 
-        await txn.update(
-          DatabaseTables.products,
-          <String, Object?>{'stock_quantity': newStock1, 'updated_at': now},
-          where: 'id = ?',
-          whereArgs: <Object?>[productRows[0]['id']],
-        );
-        await txn.update(
-          DatabaseTables.products,
-          <String, Object?>{'stock_quantity': newStock2, 'updated_at': now},
-          where: 'id = ?',
-          whereArgs: <Object?>[productRows[1]['id']],
-        );
+          await txn.update(
+            DatabaseTables.products,
+            <String, Object?>{'stock_quantity': newStock1, 'updated_at': now},
+            where: 'id = ?',
+            whereArgs: <Object?>[productRows[0]['id']],
+          );
+          await txn.update(
+            DatabaseTables.products,
+            <String, Object?>{'stock_quantity': newStock2, 'updated_at': now},
+            where: 'id = ?',
+            whereArgs: <Object?>[productRows[1]['id']],
+          );
 
-        await txn.insert(DatabaseTables.stockHistories, <String, Object?>{
-          'product_id': productRows[0]['id'],
-          'type': 'sale',
-          'quantity': q1,
-          'old_stock': oldStock1,
-          'new_stock': newStock1,
-          'note': 'Demo sale seed',
-          'created_at': now,
-        });
-        await txn.insert(DatabaseTables.stockHistories, <String, Object?>{
-          'product_id': productRows[1]['id'],
-          'type': 'sale',
-          'quantity': q2,
-          'old_stock': oldStock2,
-          'new_stock': newStock2,
-          'note': 'Demo sale seed',
-          'created_at': now,
-        });
+          await txn.insert(DatabaseTables.stockHistories, <String, Object?>{
+            'product_id': productRows[0]['id'],
+            'type': 'sale',
+            'quantity': q1,
+            'old_stock': oldStock1,
+            'new_stock': newStock1,
+            'note': 'Demo sale seed',
+            'created_at': now,
+          });
+          await txn.insert(DatabaseTables.stockHistories, <String, Object?>{
+            'product_id': productRows[1]['id'],
+            'type': 'sale',
+            'quantity': q2,
+            'old_stock': oldStock2,
+            'new_stock': newStock2,
+            'note': 'Demo sale seed',
+            'created_at': now,
+          });
+        }
       }
     });
 
@@ -1065,6 +1103,29 @@ class DatabaseHelper {
       await txn.delete(DatabaseTables.sales);
       await txn.delete(DatabaseTables.stockHistories);
       await txn.delete(DatabaseTables.products);
+      await txn.delete(
+        DatabaseTables.companies,
+        where: "name IN (?, ?, ?, ?, ? ,?)",
+        whereArgs: <Object?>[
+          'Elegon',
+          'Shwe Li Maw',
+          'Green Land',
+          'Myanmar Pharma',
+          'Shwe Pharma',
+          'Green Cross Pharma',
+        ],
+      );
+      await txn.delete(
+        DatabaseTables.categories,
+        where: "name IN (?, ?, ?, ?, ?) ",
+        whereArgs: <Object?>[
+          'Food',
+          'Drink',
+          'Cosmetic',
+          'Phone Item',
+          'Accessories',
+        ],
+      );
 
       final String now = DateTime.now().toIso8601String();
       await txn.insert(DatabaseTables.settings, <String, Object?>{

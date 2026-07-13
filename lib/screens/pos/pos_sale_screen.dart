@@ -262,7 +262,9 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int?>(
-                      key: ValueKey<String>('customer-${pos.customerId ?? 'walkin'}'),
+                      key: ValueKey<String>(
+                        'customer-${pos.customerId ?? 'walkin'}',
+                      ),
                       initialValue: pos.customerId,
                       items: <DropdownMenuItem<int?>>[
                         const DropdownMenuItem<int?>(
@@ -310,8 +312,9 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                       },
                       decoration: InputDecoration(
                         labelText: 'Customer Profile',
-                        helperText: pos.isCreditSale
-                            ? 'A saved customer is required for Credit sales'
+                        helperText:
+                            pos.isCreditSale || pos.paidAmount < pos.finalTotal
+                            ? 'A saved customer is required when payment is not complete'
                             : null,
                       ),
                     ),
@@ -346,8 +349,11 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                         ),
                         onChanged: (String v) =>
                             pos.setPaidAmount(double.tryParse(v) ?? 0),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Paid Amount',
+                          helperText: pos.paidAmount < pos.finalTotal
+                              ? 'Remaining: ${Formatters.money(pos.creditDueAmount, symbol: settings.currencySymbol)}'
+                              : null,
                         ),
                       )
                     else
@@ -355,25 +361,27 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
                           children: <Widget>[
                             Icon(
                               Icons.account_balance_wallet_outlined,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Credit sale: no Paid Amount is required. The full total will be added to the selected customer credit balance.',
                                 style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSecondaryContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSecondaryContainer,
                                 ),
                               ),
                             ),
@@ -465,9 +473,11 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                               symbol: settings.currencySymbol,
                             ),
                           ),
-                          if (pos.isCreditSale)
+                          if (pos.isCreditSale || pos.creditDueAmount > 0)
                             _line(
-                              'Amount on Credit',
+                              pos.isCreditSale
+                                  ? 'Amount on Credit'
+                                  : 'Amount Due',
                               Formatters.money(
                                 pos.creditDueAmount,
                                 symbol: settings.currencySymbol,

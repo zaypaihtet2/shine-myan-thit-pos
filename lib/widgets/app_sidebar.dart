@@ -15,6 +15,29 @@ enum AppPage {
   backup,
 }
 
+class _SidebarItem {
+  const _SidebarItem(this.page, this.icon, this.label);
+
+  final AppPage page;
+  final IconData icon;
+  final String label;
+}
+
+const List<_SidebarItem> _sidebarItems = <_SidebarItem>[
+  _SidebarItem(AppPage.dashboard, Icons.dashboard_outlined, 'Dashboard'),
+  _SidebarItem(AppPage.pos, Icons.point_of_sale_outlined, 'POS'),
+  _SidebarItem(AppPage.products, Icons.inventory_2_outlined, 'Products'),
+  _SidebarItem(AppPage.purchases, Icons.local_shipping_outlined, 'Purchases'),
+  _SidebarItem(AppPage.categories, Icons.category_outlined, 'Categories'),
+  _SidebarItem(AppPage.companies, Icons.apartment_outlined, 'Companies'),
+  _SidebarItem(AppPage.customers, Icons.groups_outlined, 'Customers'),
+  _SidebarItem(AppPage.stock, Icons.move_down_outlined, 'Stock'),
+  _SidebarItem(AppPage.sales, Icons.receipt_long_outlined, 'Sales'),
+  _SidebarItem(AppPage.reports, Icons.assessment_outlined, 'Reports'),
+  _SidebarItem(AppPage.settings, Icons.settings_outlined, 'Settings'),
+  _SidebarItem(AppPage.backup, Icons.backup_outlined, 'Backup'),
+];
+
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key, required this.current, required this.onSelect});
 
@@ -44,10 +67,7 @@ class AppSidebar extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: <Color>[
-                      Color(0xFF0F5132),
-                      Color(0xFF1F7A4D),
-                    ],
+                    colors: <Color>[Color(0xFF0F5132), Color(0xFF1F7A4D)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -103,88 +123,50 @@ class AppSidebar extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: NavigationRail(
-                selectedIndex: AppPage.values.indexOf(current),
-                onDestinationSelected: (int index) =>
-                    onSelect(AppPage.values[index]),
-                labelType: NavigationRailLabelType.all,
-                leading: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                     child: Text(
                       'Navigation',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            letterSpacing: 1.1,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        letterSpacing: 1.1,
+                      ),
                     ),
                   ),
-                ),
-                groupAlignment: -0.9,
-                destinations: const <NavigationRailDestination>[
-                  NavigationRailDestination(
-                    icon: Icon(Icons.dashboard_outlined),
-                    selectedIcon: Icon(Icons.dashboard_rounded),
-                    label: Text('Dashboard'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.point_of_sale_outlined),
-                    selectedIcon: Icon(Icons.point_of_sale_rounded),
-                    label: Text('POS'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.inventory_2_outlined),
-                    selectedIcon: Icon(Icons.inventory_2_rounded),
-                    label: Text('Products'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.local_shipping_outlined),
-                    selectedIcon: Icon(Icons.local_shipping_rounded),
-                    label: Text('Purchases'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.category_outlined),
-                    selectedIcon: Icon(Icons.category_rounded),
-                    label: Text('Categories'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.apartment_outlined),
-                    selectedIcon: Icon(Icons.apartment_rounded),
-                    label: Text('Companies'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.groups_outlined),
-                    selectedIcon: Icon(Icons.groups_rounded),
-                    label: Text('Customers'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.move_down_outlined),
-                    selectedIcon: Icon(Icons.move_down_rounded),
-                    label: Text('Stock'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.receipt_long_outlined),
-                    selectedIcon: Icon(Icons.receipt_long_rounded),
-                    label: Text('Sales'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.assessment_outlined),
-                    selectedIcon: Icon(Icons.assessment_rounded),
-                    label: Text('Reports'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.settings_outlined),
-                    selectedIcon: Icon(Icons.settings_rounded),
-                    label: Text('Settings'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.backup_outlined),
-                    selectedIcon: Icon(Icons.backup_rounded),
-                    label: Text('Backup'),
-                  ),
+                  ..._sidebarItems.map((_SidebarItem item) {
+                    final bool selected = item.page == current;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: ListTile(
+                        dense: true,
+                        selected: selected,
+                        selectedTileColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        leading: Icon(
+                          item.icon,
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        title: Text(
+                          item.label,
+                          style: TextStyle(
+                            fontWeight: selected
+                                ? FontWeight.w900
+                                : FontWeight.w600,
+                          ),
+                        ),
+                        onTap: () => onSelect(item.page),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

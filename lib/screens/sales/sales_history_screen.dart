@@ -33,7 +33,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     final double visibleAmount = sales.sales.fold<double>(
       0,
       (double sum, SaleModel sale) =>
-          sum + (sale.saleType == 'return' ? -sale.finalTotal : sale.finalTotal),
+          sum +
+          (sale.saleType == 'return' ? -sale.finalTotal : sale.finalTotal),
     );
 
     return Padding(
@@ -82,8 +83,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                       Text(
                         'Date, customer and sale amount are shown first for quick checking.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
                       ),
                     ],
                   ),
@@ -143,32 +144,29 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
             child: sales.loading
                 ? const Center(child: CircularProgressIndicator())
                 : sales.sales.isEmpty
-                    ? const _EmptyState(
-                        icon: Icons.receipt_long_outlined,
-                        text: 'No sales found.',
-                      )
-                    : ListView.separated(
-                        itemCount: sales.sales.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 10),
-                        itemBuilder: (_, int index) {
-                          final SaleModel sale = sales.sales[index];
-                          return _SaleHistoryCard(
-                            sale: sale,
-                            currency: currency,
-                            onView: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => SaleDetailScreen(
-                                  saleId: sale.id!,
-                                ),
-                              ),
-                            ),
-                            onDelete: sale.saleType == 'sale'
-                                ? () => _delete(sale.id!)
-                                : null,
-                          );
-                        },
-                      ),
+                ? const _EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    text: 'No sales found.',
+                  )
+                : ListView.separated(
+                    itemCount: sales.sales.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, int index) {
+                      final SaleModel sale = sales.sales[index];
+                      return _SaleHistoryCard(
+                        sale: sale,
+                        currency: currency,
+                        onView: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => SaleDetailScreen(saleId: sale.id!),
+                          ),
+                        ),
+                        onDelete: sale.saleType == 'sale'
+                            ? () => _delete(sale.id!)
+                            : null,
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -212,10 +210,10 @@ class _ColumnHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextStyle? style = Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w900,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          letterSpacing: 0.6,
-        );
+      fontWeight: FontWeight.w900,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      letterSpacing: 0.6,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
@@ -225,7 +223,8 @@ class _ColumnHeader extends StatelessWidget {
       child: Row(
         children: <Widget>[
           SizedBox(width: 190, child: Text('DATE', style: style)),
-          Expanded(flex: 4, child: Text('CUSTOMER', style: style)),
+          Expanded(flex: 3, child: Text('CUSTOMER', style: style)),
+          Expanded(flex: 1, child: Text('STATUS', style: style)),
           Expanded(flex: 2, child: Text('AMOUNT', style: style)),
           const SizedBox(width: 210, child: SizedBox.shrink()),
         ],
@@ -270,24 +269,22 @@ class _SaleHistoryCard extends StatelessWidget {
                     Text(
                       _datePart(sale.saleDate),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _timePart(sale.saleDate),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
               ),
               Expanded(
-                flex: 4,
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -298,35 +295,35 @@ class _SaleHistoryCard extends StatelessWidget {
                             customer,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ),
-                        if (isReturn) ...<Widget>[
-                          const SizedBox(width: 8),
-                          const _ChipBadge(
-                            text: 'RETURN',
-                            background: Color(0xFFFFE0E0),
-                            foreground: Color(0xFF9B1C1C),
-                          ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       '${sale.invoiceNo}  •  ${_customerTypeLabel(sale.customerType)}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     _PaymentBadge(method: sale.paymentMethod),
                   ],
                 ),
+              ),
+              Expanded(
+                flex: 1,
+                child: isReturn
+                    ? const _ChipBadge(
+                        text: 'RETURN',
+                        background: Color(0xFFFFE0E0),
+                        foreground: Color(0xFF9B1C1C),
+                      )
+                    : _SettlementBadge(
+                        paid: sale.paidAmount >= sale.finalTotal,
+                      ),
               ),
               Expanded(
                 flex: 2,
@@ -335,7 +332,8 @@ class _SaleHistoryCard extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       Formatters.money(sale.finalTotal, symbol: currency),
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             color: isReturn
                                 ? Theme.of(context).colorScheme.error
@@ -428,11 +426,41 @@ class _PaymentBadge extends StatelessWidget {
       child: Text(
         method,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: isCredit
-                  ? Theme.of(context).colorScheme.onErrorContainer
-                  : Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
+          fontWeight: FontWeight.w800,
+          color: isCredit
+              ? Theme.of(context).colorScheme.onErrorContainer
+              : Theme.of(context).colorScheme.onPrimaryContainer,
+        ),
+      ),
+    );
+  }
+}
+
+class _SettlementBadge extends StatelessWidget {
+  const _SettlementBadge({required this.paid});
+
+  final bool paid;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color background = paid
+        ? const Color(0xFFD1FAE5)
+        : const Color(0xFFFEE2E2);
+    final Color foreground = paid
+        ? const Color(0xFF047857)
+        : const Color(0xFFB91C1C);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        paid ? 'PAID' : 'UNPAID',
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -536,9 +564,9 @@ class _EmptyState extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 text,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ],
           ),

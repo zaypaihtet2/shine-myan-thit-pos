@@ -13,8 +13,7 @@ class CustomerProvider extends ChangeNotifier {
   Future<void> load() async {
     loading = true;
     notifyListeners();
-    final List<Map<String, Object?>> rows = await _db.rawQuery(
-      '''SELECT c.*,
+    final List<Map<String, Object?>> rows = await _db.rawQuery('''SELECT c.*,
         COALESCE((
           SELECT SUM(
             CASE
@@ -25,7 +24,6 @@ class CustomerProvider extends ChangeNotifier {
           )
           FROM ${DatabaseTables.sales} s
           WHERE s.customer_id = c.id
-            AND s.payment_method = 'Credit'
             AND s.sale_type = 'sale'
         ), 0)
         - COALESCE((
@@ -33,11 +31,9 @@ class CustomerProvider extends ChangeNotifier {
           FROM ${DatabaseTables.saleReturns} sr
           INNER JOIN ${DatabaseTables.sales} rs ON rs.id = sr.sale_id
           WHERE rs.customer_id = c.id
-            AND rs.payment_method = 'Credit'
         ), 0) AS credit_balance
       FROM ${DatabaseTables.customers} c
-      ORDER BY c.name ASC''',
-    );
+      ORDER BY c.name ASC''');
     customers = rows.map(CustomerModel.fromMap).toList();
     loading = false;
     notifyListeners();

@@ -33,6 +33,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   );
 
   List<Map<String, Object?>> rows = <Map<String, Object?>>[];
+  Map<String, double> companyCashback = <String, double>{};
   bool loading = false;
   String selectedRange = 'Today';
 
@@ -60,31 +61,35 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: loading
                 ? const Center(child: CircularProgressIndicator())
                 : rows.isEmpty
-                    ? const _EmptyState(
-                        icon: Icons.analytics_outlined,
-                        text: 'No report records in this date range.',
-                      )
-                    : ListView(
-                        children: <Widget>[
-                          _buildMetricGrid(context, currency, totals),
-                          const SizedBox(height: 18),
-                          _buildSalesHeader(context),
-                          const SizedBox(height: 10),
-                          ...rows.map(
-                            (Map<String, Object?> row) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _ReportSaleCard(
-                                row: row,
-                                currency: currency,
-                                onView: _isNormalSale(row)
-                                    ? () => _openVoucher(row)
-                                    : null,
-                              ),
-                            ),
+                ? const _EmptyState(
+                    icon: Icons.analytics_outlined,
+                    text: 'No report records in this date range.',
+                  )
+                : ListView(
+                    children: <Widget>[
+                      _buildMetricGrid(context, currency, totals),
+                      const SizedBox(height: 18),
+                      _buildDoctorCashbackBreakdown(context, currency),
+                      const SizedBox(height: 18),
+                      _buildCompanyCashbackBreakdown(context, currency),
+                      const SizedBox(height: 18),
+                      _buildSalesHeader(context),
+                      const SizedBox(height: 10),
+                      ...rows.map(
+                        (Map<String, Object?> row) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ReportSaleCard(
+                            row: row,
+                            currency: currency,
+                            onView: _isNormalSale(row)
+                                ? () => _openVoucher(row)
+                                : null,
                           ),
-                          const SizedBox(height: 16),
-                        ],
+                        ),
                       ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -136,25 +141,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 Text(
                   'Sales Reports',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   '$selectedRange  •  ${Formatters.date(from)} to ${Formatters.date(to)}',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-          _HeroValue(
-            label: 'Invoices',
-            value: '${totals.invoiceCount}',
-          ),
+          _HeroValue(label: 'Invoices', value: '${totals.invoiceCount}'),
           const SizedBox(width: 10),
           _HeroValue(
             label: 'Net Sales',
@@ -293,8 +295,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final int columns = width >= 1250
             ? 4
             : width >= 850
-                ? 3
-                : 2;
+            ? 3
+            : 2;
         final double cardWidth = (width - ((columns - 1) * 12)) / columns;
 
         return Wrap(
@@ -322,17 +324,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
             Expanded(
               child: Text(
                 'Sales Details',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
             ),
             Text(
               '${rows.length} record(s)',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -347,10 +349,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             children: <Widget>[
               SizedBox(
                 width: 180,
-                child: Text(
-                  'DATE',
-                  style: _columnStyle(context),
-                ),
+                child: Text('DATE', style: _columnStyle(context)),
               ),
               Expanded(
                 flex: 4,
@@ -372,12 +371,212 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  Widget _buildDoctorCashbackBreakdown(BuildContext context, String currency) {
+    final Map<String, double> byDoctor = <String, double>{};
+    for (final Map<String, Object?> row in rows) {
+      final double cashback = _number(row['customer_cashback_amount']);
+      if (cashback == 0) continue;
+      final String name = '${row['customer_name'] ?? ''}'.trim();
+      final String doctor = name.isEmpty ? 'Unknown Doctor' : name;
+      byDoctor[doctor] = (byDoctor[doctor] ?? 0) + cashback;
+    }
+    if (byDoctor.isEmpty) return const SizedBox.shrink();
+
+    final List<MapEntry<String, double>> entries = byDoctor.entries.toList()
+      ..sort((MapEntry<String, double> a, MapEntry<String, double> b) {
+        return b.value.compareTo(a.value);
+      });
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              'Doctor Cashback by Doctor',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            ...entries.map(
+              (MapEntry<String, double> entry) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: <Widget>[
+                    const Icon(Icons.local_hospital_outlined, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(entry.key)),
+                    Text(
+                      Formatters.money(entry.value, symbol: currency),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompanyCashbackBreakdown(BuildContext context, String currency) {
+    if (companyCashback.isEmpty) return const SizedBox.shrink();
+    final List<MapEntry<String, double>> entries =
+        companyCashback.entries.toList()
+          ..sort((MapEntry<String, double> a, MapEntry<String, double> b) {
+            return b.value.compareTo(a.value);
+          });
+    final double total = entries.fold<double>(
+      0,
+      (double sum, MapEntry<String, double> entry) => sum + entry.value,
+    );
+    const List<List<Color>> palettes = <List<Color>>[
+      <Color>[Color(0xFF0E7490), Color(0xFF06B6D4)],
+      <Color>[Color(0xFF6D28D9), Color(0xFF8B5CF6)],
+      <Color>[Color(0xFFB45309), Color(0xFFF59E0B)],
+      <Color>[Color(0xFF047857), Color(0xFF10B981)],
+    ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.apartment_outlined,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Company Cashback',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        'Cashback earned from each company',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  Formatters.money(total, symbol: currency),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final int columns = constraints.maxWidth >= 900
+                    ? 3
+                    : constraints.maxWidth >= 560
+                    ? 2
+                    : 1;
+                const double gap = 10;
+                final double width =
+                    (constraints.maxWidth - gap * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: entries.asMap().entries.map((
+                    MapEntry<int, MapEntry<String, double>> item,
+                  ) {
+                    final MapEntry<String, double> entry = item.value;
+                    final double percent = total == 0
+                        ? 0
+                        : entry.value * 100 / total;
+                    final List<Color> colors =
+                        palettes[item.key % palettes.length];
+                    return SizedBox(
+                      width: width,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: colors),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.business_outlined,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    entry.key,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              Formatters.money(entry.value, symbol: currency),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${percent.toStringAsFixed(1)}% of total cashback',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.86),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   TextStyle? _columnStyle(BuildContext context) {
     return Theme.of(context).textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.6,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        );
+      fontWeight: FontWeight.w900,
+      letterSpacing: 0.6,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
   }
 
   _ReportTotals _calculateTotals() {
@@ -409,10 +608,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         row['office_payable_amount'],
         finalTotal - companyCashback,
       );
-      remainingProfit += _numberOrFallback(
-        row['owner_keep_profit'],
-        rowProfit,
-      );
+      remainingProfit += _numberOrFallback(row['owner_keep_profit'], rowProfit);
 
       if (isReturn) {
         returnCount += 1;
@@ -447,6 +643,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
       'ORDER BY sale_date DESC, id DESC',
       <Object?>[from.toIso8601String(), to.toIso8601String()],
     );
+    final List<Map<String, Object?>> companyRows = await _db.rawQuery(
+      '''SELECT COALESCE(c.name, 'Unknown Company') AS company_name,
+        COALESCE(SUM(i.company_cashback_amount), 0) AS cashback
+      FROM ${DatabaseTables.saleItems} i
+      INNER JOIN ${DatabaseTables.sales} s ON s.id = i.sale_id
+      LEFT JOIN ${DatabaseTables.companies} c ON c.id = i.company_id
+      WHERE s.sale_date >= ? AND s.sale_date <= ?
+      GROUP BY company_name
+      ORDER BY cashback DESC''',
+      <Object?>[from.toIso8601String(), to.toIso8601String()],
+    );
+    companyCashback = <String, double>{
+      for (final Map<String, Object?> row in companyRows)
+        '${row['company_name']}': _number(row['cashback']),
+    };
     if (mounted) {
       setState(() => loading = false);
     }
@@ -557,9 +768,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final int? saleId = (row['id'] as num?)?.toInt();
     if (saleId == null) return;
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => SaleDetailScreen(saleId: saleId),
-      ),
+      MaterialPageRoute<void>(builder: (_) => SaleDetailScreen(saleId: saleId)),
     );
   }
 
@@ -632,18 +841,16 @@ class _ReportSaleCard extends StatelessWidget {
                     Text(
                       _datePart('${row['sale_date'] ?? ''}'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       _timePart('${row['sale_date'] ?? ''}'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -660,9 +867,7 @@ class _ReportSaleCard extends StatelessWidget {
                             customer,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ),
@@ -680,10 +885,8 @@ class _ReportSaleCard extends StatelessWidget {
                     Text(
                       '${row['invoice_no'] ?? ''}  •  ${_customerType('${row['customer_type'] ?? 'regular'}')}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 7),
                     _PaymentBadge(method: '${row['payment_method'] ?? ''}'),
@@ -697,7 +900,8 @@ class _ReportSaleCard extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       Formatters.money(amount, symbol: currency),
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             color: isReturn
                                 ? Theme.of(context).colorScheme.error
@@ -729,8 +933,8 @@ class _ReportSaleCard extends StatelessWidget {
                     Text(
                       'Office: ${Formatters.money(officePayable, symbol: currency)}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -846,7 +1050,7 @@ class _ColorMetricCard extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 18),
           Text(
             metric.value,
             maxLines: 1,
@@ -906,13 +1110,13 @@ class _PaymentBadge extends StatelessWidget {
     final Color background = returned
         ? const Color(0xFFFFE0E0)
         : credit
-            ? const Color(0xFFFFEDD5)
-            : const Color(0xFFDCFCE7);
+        ? const Color(0xFFFFEDD5)
+        : const Color(0xFFDCFCE7);
     final Color foreground = returned
         ? const Color(0xFF991B1B)
         : credit
-            ? const Color(0xFF9A3412)
-            : const Color(0xFF166534);
+        ? const Color(0xFF9A3412)
+        : const Color(0xFF166534);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1033,9 +1237,9 @@ class _EmptyState extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 text,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ],
           ),

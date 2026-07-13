@@ -50,8 +50,8 @@ class PurchaseEntryScreen extends StatelessWidget {
                       Text(
                         'Record supplier purchases and update product stock automatically.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.88),
-                            ),
+                          color: Colors.white.withValues(alpha: 0.88),
+                        ),
                       ),
                     ],
                   ),
@@ -100,62 +100,54 @@ class PurchaseEntryScreen extends StatelessWidget {
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.purchases.isEmpty
-                    ? Center(
-                        child: FilledButton.icon(
-                          onPressed: () => _openForm(context),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Create First Purchase'),
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: provider.purchases.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 10),
-                        itemBuilder: (_, int index) {
-                          final Map<String, Object?> row =
-                              provider.purchases[index];
-                          final int purchaseId = (row['id'] as num).toInt();
-                          final String reference =
-                              '${row['reference_no'] ?? ''}'.trim();
-                          return Card(
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 10,
-                              ),
-                              leading: const CircleAvatar(
-                                child: Icon(Icons.move_to_inbox_outlined),
-                              ),
-                              title: Text(
-                                '${row['purchase_no']} - ${row['supplier_name']}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${row['purchase_date']} | '
-                                '${(row['item_count'] as num? ?? 0).toInt()} products | '
-                                '${(row['total_quantity'] as num? ?? 0).toInt()} qty'
-                                '${reference.isEmpty ? '' : ' | Ref: $reference'}',
-                              ),
-                              trailing: Text(
-                                Formatters.money(
-                                  row['total_amount'] as num? ?? 0,
-                                  symbol: currency,
-                                ),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              onTap: () => _showDetail(
-                                context,
-                                purchaseId,
-                                currency,
-                              ),
+                ? Center(
+                    child: FilledButton.icon(
+                      onPressed: () => _openForm(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create First Purchase'),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: provider.purchases.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, int index) {
+                      final Map<String, Object?> row =
+                          provider.purchases[index];
+                      final int purchaseId = (row['id'] as num).toInt();
+                      final String reference = '${row['reference_no'] ?? ''}'
+                          .trim();
+                      return Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          leading: const CircleAvatar(
+                            child: Icon(Icons.move_to_inbox_outlined),
+                          ),
+                          title: Text(
+                            '${row['purchase_no']} - ${row['supplier_name']}',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          subtitle: Text(
+                            '${row['purchase_date']} | '
+                            '${(row['item_count'] as num? ?? 0).toInt()} products | '
+                            '${(row['total_quantity'] as num? ?? 0).toInt()} qty'
+                            '${reference.isEmpty ? '' : ' | Ref: $reference'}',
+                          ),
+                          trailing: Text(
+                            Formatters.money(
+                              row['total_amount'] as num? ?? 0,
+                              symbol: currency,
                             ),
-                          );
-                        },
-                      ),
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          onTap: () =>
+                              _showDetail(context, purchaseId, currency),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -164,17 +156,13 @@ class PurchaseEntryScreen extends StatelessWidget {
 
   Future<void> _openForm(BuildContext context) async {
     final bool? saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => const PurchaseEntryFormScreen(),
-      ),
+      MaterialPageRoute<bool>(builder: (_) => const PurchaseEntryFormScreen()),
     );
     if (saved == true && context.mounted) {
       await context.read<PurchaseProvider>().load();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Purchase saved and stock updated'),
-        ),
+        const SnackBar(content: Text('Purchase saved and stock updated')),
       );
     }
   }
@@ -185,13 +173,14 @@ class PurchaseEntryScreen extends StatelessWidget {
     String currency,
   ) async {
     try {
-      final Map<String, Object?> result =
-          await context.read<PurchaseProvider>().detail(purchaseId);
+      final Map<String, Object?> result = await context
+          .read<PurchaseProvider>()
+          .detail(purchaseId);
       if (!context.mounted) return;
       final Map<String, Object?> purchase =
           result['purchase'] as Map<String, Object?>;
-      final List<Map<String, Object?>> items =
-          (result['items'] as List).cast<Map<String, Object?>>();
+      final List<Map<String, Object?>> items = (result['items'] as List)
+          .cast<Map<String, Object?>>();
 
       await showDialog<void>(
         context: context,
@@ -214,7 +203,7 @@ class PurchaseEntryScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     title: Text('${item['product_name']}'),
                     subtitle: Text(
-                      'Qty ${item['quantity']} x '
+                      'Paid ${item['quantity']} + FOC ${item['foc_quantity'] ?? 0} x '
                       '${Formatters.money(item['unit_cost'] as num? ?? 0, symbol: currency)}'
                       ' | Stock ${item['old_stock']} to ${item['new_stock']}',
                     ),
@@ -230,7 +219,20 @@ class PurchaseEntryScreen extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'Total: ${Formatters.money(purchase['total_amount'] as num? ?? 0, symbol: currency)}',
+                    'Subtotal: ${Formatters.money(purchase['subtotal_amount'] as num? ?? purchase['total_amount'] as num? ?? 0, symbol: currency)}',
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Company Cashback ${purchase['cashback_percent'] ?? 0}%: '
+                    '${Formatters.money(purchase['cashback_amount'] as num? ?? 0, symbol: currency)}',
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'Final Total: ${Formatters.money(purchase['final_total'] as num? ?? purchase['total_amount'] as num? ?? 0, symbol: currency)}',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -250,9 +252,9 @@ class PurchaseEntryScreen extends StatelessWidget {
       );
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$error')));
     }
   }
 }
@@ -287,8 +289,8 @@ class _SummaryCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),

@@ -138,7 +138,12 @@ class ReceiptService {
             _cell('Description', tableFont, header: true),
             _cell('Qty', tableFont, header: true, align: pw.TextAlign.center),
             _cell('FOC', tableFont, header: true, align: pw.TextAlign.center),
-            _cell('Unit Price', tableFont, header: true, align: pw.TextAlign.right),
+            _cell(
+              'Unit Price',
+              tableFont,
+              header: true,
+              align: pw.TextAlign.right,
+            ),
             _cell('Amount', tableFont, header: true, align: pw.TextAlign.right),
           ],
         ),
@@ -195,16 +200,12 @@ class ReceiptService {
   ) {
     final double discount = _numberValue(sale['discount_amount']);
     final double rebate = _numberValue(sale['rebate_amount']);
-    final double doctorCashback = _numberValue(sale['customer_cashback_amount']);
     final double ownerCashback = _numberValue(sale['company_cashback_amount']);
     final double officePayable = _numberValue(sale['office_payable_amount']);
     final double total = _numberValue(sale['final_total']);
     final double paid = _numberValue(sale['paid_amount']);
     final double change = _numberValue(sale['change_amount']);
-    final bool isCredit = '${sale['payment_method'] ?? ''}' == 'Credit';
-    final double balance = isCredit
-        ? (total - paid).clamp(0, double.infinity).toDouble()
-        : 0;
+    final double balance = (total - paid).clamp(0, double.infinity).toDouble();
     final int totalFoc = items.fold<int>(
       0,
       (int sum, Map<String, Object?> item) =>
@@ -221,22 +222,9 @@ class ReceiptService {
             if (totalFoc > 0) _textLine('Total FOC', '$totalFoc', fontSize),
             if (discount > 0)
               _moneyLine('Discount / CD', discount, fontSize, currency),
-            if (rebate > 0)
-              _moneyLine('Rebate', rebate, fontSize, currency),
-            if (doctorCashback > 0)
-              _moneyLine(
-                'Doctor Cashback',
-                doctorCashback,
-                fontSize,
-                currency,
-              ),
+            if (rebate > 0) _moneyLine('Rebate', rebate, fontSize, currency),
             if (ownerCashback > 0)
-              _moneyLine(
-                'Owner Cashback',
-                ownerCashback,
-                fontSize,
-                currency,
-              ),
+              _moneyLine('Owner Cashback', ownerCashback, fontSize, currency),
             if (officePayable > 0 && officePayable != total)
               _moneyLine(
                 'Payable To Office',
@@ -247,14 +235,8 @@ class ReceiptService {
             pw.Divider(height: 10),
             _moneyLine('TOTAL', total, fontSize + 1, currency, bold: true),
             _moneyLine('Paid', paid, fontSize, currency),
-            if (isCredit)
-              _moneyLine(
-                'BALANCE',
-                balance,
-                fontSize + 1,
-                currency,
-                bold: true,
-              )
+            if (balance > 0)
+              _moneyLine('BALANCE', balance, fontSize + 1, currency, bold: true)
             else
               _moneyLine(
                 change < 0 ? 'BALANCE' : 'Change',
@@ -348,7 +330,9 @@ class ReceiptService {
 
   String _itemRemarks(Map<String, Object?> item, String currency) {
     final List<String> remarks = <String>[];
-    final String option = _saleOptionLabel('${item['sale_option'] ?? 'normal'}');
+    final String option = _saleOptionLabel(
+      '${item['sale_option'] ?? 'normal'}',
+    );
     if (option != 'Normal') remarks.add(option);
 
     final double discountPercent = _numberValue(item['discount_percent']);
@@ -361,11 +345,6 @@ class ReceiptService {
       remarks.add('Rebate ${_percent(rebatePercent)}');
     }
 
-    final double doctorCashback =
-        _numberValue(item['customer_cashback_amount']);
-    if (doctorCashback > 0) {
-      remarks.add('Doctor Cashback ${_money(doctorCashback, currency)}');
-    }
     return remarks.join(' | ');
   }
 
@@ -373,9 +352,14 @@ class ReceiptService {
     switch (code) {
       case 'office_rule':
         return 'Office FOC';
+      case 'office_rule_cd2':
+        return 'Office FOC + CD 2%';
       case 'doctor_rule':
       case 'dr_cashback':
-        return 'Doctor Cashback';
+      case 'dr_cashback_cd2':
+        return 'Normal';
+      case 'net_price_cd2':
+        return 'Net Price + CD 2%';
       case 'cd2':
         return 'CD 2%';
       default:

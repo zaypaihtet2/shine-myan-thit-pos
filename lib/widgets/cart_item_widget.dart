@@ -53,7 +53,7 @@ class CartItemWidget extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${line.qty} x ${Formatters.money(unitPrice, symbol: currency)}'
-                    '${line.pricingMode.discountPercent > 0 ? ' (-${line.pricingMode.discountPercent.toStringAsFixed(0)}%)' : ''}'
+                    '${line.cd2Enabled ? ' (-2%)' : ''}'
                     ' = ${Formatters.money(lineTotal, symbol: currency)}',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
@@ -110,6 +110,10 @@ class CartItemWidget extends StatelessWidget {
                         isDense: true,
                         underline: const SizedBox.shrink(),
                         items: SalePricingMode.values
+                            .where(
+                              (SalePricingMode mode) =>
+                                  mode != SalePricingMode.cd2,
+                            )
                             .map(
                               (SalePricingMode mode) =>
                                   DropdownMenuItem<SalePricingMode>(
@@ -120,14 +124,31 @@ class CartItemWidget extends StatelessWidget {
                             .toList(),
                         onChanged: (SalePricingMode? mode) async {
                           if (mode == null) return;
+                          final SalePricingMode previousMode = line.pricingMode;
                           onModeChanged(mode);
                           if (!context.mounted) return;
                           if (mode == SalePricingMode.netPrice) {
-                            await _showNetPriceDialog(context);
+                            final bool applied = await _showNetPriceDialog(
+                              context,
+                            );
+                            if (!applied && context.mounted) {
+                              onModeChanged(previousMode);
+                            }
                           } else if (mode == SalePricingMode.drCashback) {
-                            await _showDoctorCashbackDialog(context);
+                            final bool applied =
+                                await _showDoctorCashbackDialog(context);
+                            if (!applied && context.mounted) {
+                              onModeChanged(previousMode);
+                            }
                           }
                         },
+                      ),
+                      FilterChip(
+                        label: const Text('CD 2%'),
+                        selected: line.cd2Enabled,
+                        onSelected: (bool enabled) => context
+                            .read<PosProvider>()
+                            .setLineCd2(line, enabled),
                       ),
                       if (line.pricingMode == SalePricingMode.netPrice)
                         TextButton.icon(
@@ -182,7 +203,7 @@ class CartItemWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _showNetPriceDialog(BuildContext context) async {
+  Future<bool> _showNetPriceDialog(BuildContext context) async {
     final PosProvider pos = context.read<PosProvider>();
     final String currency = context.read<SettingsProvider>().currencySymbol;
     final double suggested = pos.lineSuggestedNetPrice(line);
@@ -252,29 +273,37 @@ class CartItemWidget extends StatelessWidget {
             const SnackBar(content: Text('Enter a valid net sale price')),
           );
         }
+        salePrice.dispose();
+        return false;
       } else {
         try {
           pos.setLineUnitPrice(line, price);
+          salePrice.dispose();
+          return true;
         } catch (error) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('$error')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('$error')));
           }
         }
       }
     }
 
     salePrice.dispose();
+    return false;
   }
 
-  Future<void> _showDoctorCashbackDialog(BuildContext context) async {
+  Future<bool> _showDoctorCashbackDialog(BuildContext context) async {
     final PosProvider pos = context.read<PosProvider>();
     final TextEditingController salePrice = TextEditingController(
       text: pos.lineUnitPrice(line).toStringAsFixed(2),
     );
     final TextEditingController cashback = TextEditingController(
       text: pos.lineDoctorCashback(line).toStringAsFixed(2),
+    );
+    final TextEditingController focQty = TextEditingController(
+      text: pos.lineFocQty(line).toString(),
     );
 
     final bool? save = await showDialog<bool>(
@@ -308,6 +337,15 @@ class CartItemWidget extends StatelessWidget {
                   helperText: 'Enter the total cashback for this cart line',
                 ),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: focQty,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'FOC Quantity',
+                  helperText: 'Enter the FOC quantity for this cart line',
+                ),
+              ),
             ],
           ),
         ),
@@ -327,21 +365,33 @@ class CartItemWidget extends StatelessWidget {
     if (save == true) {
       final double? price = double.tryParse(salePrice.text.replaceAll(',', ''));
       final double? amount = double.tryParse(cashback.text.replaceAll(',', ''));
-      if (price == null || amount == null) {
+      final int? foc = int.tryParse(focQty.text.replaceAll(',', '').trim());
+      if (price == null || amount == null || foc == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Enter valid sale price and cashback')),
+            const SnackBar(
+              content: Text('Enter valid price, cashback and FOC'),
+            ),
           );
         }
+        salePrice.dispose();
+        cashback.dispose();
+        focQty.dispose();
+        return false;
       } else {
         try {
           pos.setLineUnitPrice(line, price);
           pos.setLineDoctorCashbackAmount(line, amount);
+          pos.setLineFocQty(line, foc);
+          salePrice.dispose();
+          cashback.dispose();
+          focQty.dispose();
+          return true;
         } catch (error) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('$error')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('$error')));
           }
         }
       }
@@ -349,5 +399,7 @@ class CartItemWidget extends StatelessWidget {
 
     salePrice.dispose();
     cashback.dispose();
+    focQty.dispose();
+    return false;
   }
 }

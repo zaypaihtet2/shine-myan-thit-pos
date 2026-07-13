@@ -46,11 +46,15 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<CompanyModel> companies =
-        context.watch<CompanyProvider>().companies;
-    final List<ProductModel> products =
-        context.watch<ProductProvider>().products;
+    final List<CompanyModel> companies = context
+        .watch<CompanyProvider>()
+        .companies;
+    final List<ProductModel> products = context
+        .watch<ProductProvider>()
+        .products;
     final String currency = context.watch<SettingsProvider>().currencySymbol;
+    final CompanyModel? selectedCompany = _supplierCompany(companies);
+    final double cashbackPercent = selectedCompany?.cashbackPercent ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('New Purchase Entry')),
@@ -70,9 +74,7 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                       Expanded(
                         child: Text(
                           'Purchased Products',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
@@ -97,11 +99,11 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                     ..._lines.asMap().entries.map(
                       (MapEntry<int, _PurchaseLineDraft> entry) =>
                           _buildLineCard(
-                        index: entry.key,
-                        line: entry.value,
-                        products: products,
-                        currency: currency,
-                      ),
+                            index: entry.key,
+                            line: entry.value,
+                            products: products,
+                            currency: currency,
+                          ),
                     ),
                   const SizedBox(height: 14),
                   Card(
@@ -114,18 +116,29 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                           Expanded(
                             child: Text(
                               'Total Purchase Value',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
-                          Text(
-                            Formatters.money(_grandTotal, symbol: currency),
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w900),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: <Widget>[
+                              Text(
+                                'Subtotal: ${Formatters.money(_grandTotal, symbol: currency)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                'Company Cashback ${cashbackPercent.toStringAsFixed(2)}%: '
+                                '${Formatters.money(_cashbackAmount(cashbackPercent), symbol: currency)}',
+                              ),
+                              Text(
+                                'Final Total: ${Formatters.money(_finalTotal(cashbackPercent), symbol: currency)}',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.w900),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -196,16 +209,16 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                 Text(
                   'Purchase Entry',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Saving this entry automatically adds every quantity to product stock.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.88),
-                      ),
+                    color: Colors.white.withValues(alpha: 0.88),
+                  ),
                 ),
               ],
             ),
@@ -365,8 +378,10 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                     onChanged: (int? productId) {
                       setState(() {
                         line.productId = productId;
-                        final ProductModel? product =
-                            _selectedProduct(products, productId);
+                        final ProductModel? product = _selectedProduct(
+                          products,
+                          productId,
+                        );
                         if (product != null && line.cost == 0) {
                           final double suggested = product.buyingPrice > 0
                               ? product.buyingPrice
@@ -386,9 +401,15 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                   child: TextField(
                     controller: line.quantity,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Quantity',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Quantity'),
+                  ),
+                ),
+                SizedBox(
+                  width: 140,
+                  child: TextField(
+                    controller: line.focQuantity,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'FOC Qty'),
                   ),
                 ),
                 SizedBox(
@@ -416,8 +437,9 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
                 ),
                 IconButton(
                   tooltip: 'Remove row',
-                  onPressed:
-                      _lines.length == 1 ? null : () => _removeLine(index),
+                  onPressed: _lines.length == 1
+                      ? null
+                      : () => _removeLine(index),
                   icon: const Icon(Icons.delete_outline),
                 ),
               ],
@@ -426,11 +448,12 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
               const SizedBox(height: 8),
               Text(
                 'Current Stock: ${selected.stockQuantity}  →  '
-                'After Purchase: ${selected.stockQuantity + line.qty}',
+                'After Purchase: ${selected.stockQuantity + line.totalStockQty} '
+                '(Paid ${line.qty} + FOC ${line.focQty})',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ],
           ],
@@ -439,10 +462,7 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
     );
   }
 
-  ProductModel? _selectedProduct(
-    List<ProductModel> products,
-    int? productId,
-  ) {
+  ProductModel? _selectedProduct(List<ProductModel> products, int? productId) {
     if (productId == null) return null;
     for (final ProductModel product in products) {
       if (product.id == productId) return product;
@@ -451,13 +471,26 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
   }
 
   double get _grandTotal => _lines.fold<double>(
-        0,
-        (double total, _PurchaseLineDraft line) => total + line.total,
-      );
+    0,
+    (double total, _PurchaseLineDraft line) => total + line.total,
+  );
+
+  double _cashbackAmount(double percent) => _grandTotal * percent / 100;
+
+  double _finalTotal(double percent) => _grandTotal - _cashbackAmount(percent);
+
+  CompanyModel? _supplierCompany(List<CompanyModel> companies) {
+    if (_supplierCompanyId == null) return null;
+    for (final CompanyModel company in companies) {
+      if (company.id == _supplierCompanyId) return company;
+    }
+    return null;
+  }
 
   void _addLine() {
     final _PurchaseLineDraft line = _PurchaseLineDraft();
     line.quantity.addListener(_refreshTotals);
+    line.focQuantity.addListener(_refreshTotals);
     line.unitCost.addListener(_refreshTotals);
     setState(() => _lines.add(line));
   }
@@ -507,6 +540,10 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
         _showMessage('Quantity must be greater than zero on row ${index + 1}');
         return;
       }
+      if (line.focQty < 0) {
+        _showMessage('FOC quantity cannot be negative on row ${index + 1}');
+        return;
+      }
       if (line.cost < 0) {
         _showMessage('Purchase price cannot be negative');
         return;
@@ -514,13 +551,18 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
       items.add(<String, Object?>{
         'product_id': line.productId,
         'quantity': line.qty,
+        'foc_quantity': line.focQty,
         'unit_cost': line.cost,
       });
     }
 
-    final PurchaseProvider purchaseProvider =
-        context.read<PurchaseProvider>();
+    final PurchaseProvider purchaseProvider = context.read<PurchaseProvider>();
     final ProductProvider productProvider = context.read<ProductProvider>();
+    final List<CompanyModel> companies = context
+        .read<CompanyProvider>()
+        .companies;
+    final double cashbackPercent =
+        _supplierCompany(companies)?.cashbackPercent ?? 0;
 
     setState(() => _saving = true);
     try {
@@ -530,6 +572,7 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
         purchaseDate: _dateText(_purchaseDate),
         referenceNo: _reference.text,
         note: _note.text,
+        cashbackPercent: cashbackPercent,
         items: items,
       );
       await productProvider.load();
@@ -552,24 +595,27 @@ class _PurchaseEntryFormScreenState extends State<PurchaseEntryFormScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
 class _PurchaseLineDraft {
   int? productId;
   final TextEditingController quantity = TextEditingController(text: '1');
+  final TextEditingController focQuantity = TextEditingController(text: '0');
   final TextEditingController unitCost = TextEditingController(text: '0');
 
   int get qty => int.tryParse(quantity.text.replaceAll(',', '')) ?? 0;
-  double get cost =>
-      double.tryParse(unitCost.text.replaceAll(',', '')) ?? 0;
+  int get focQty => int.tryParse(focQuantity.text.replaceAll(',', '')) ?? 0;
+  int get totalStockQty => qty + focQty;
+  double get cost => double.tryParse(unitCost.text.replaceAll(',', '')) ?? 0;
   double get total => qty * cost;
 
   void dispose() {
     quantity.dispose();
+    focQuantity.dispose();
     unitCost.dispose();
   }
 }

@@ -51,6 +51,8 @@ class CartLine {
     required this.product,
     this.qty = 1,
     this.pricingMode = SalePricingMode.normal,
+    this.cd2Enabled = false,
+    this.customFocQty,
     this.customUnitPrice,
     this.doctorCashbackAmount = 0,
   });
@@ -58,11 +60,16 @@ class CartLine {
   final ProductModel product;
   int qty;
   SalePricingMode pricingMode;
+  bool cd2Enabled;
+  int? customFocQty;
   double? customUnitPrice;
   double doctorCashbackAmount;
 
   int get focQty {
     if (pricingMode == SalePricingMode.netPrice) return 0;
+    if (pricingMode == SalePricingMode.drCashback && customFocQty != null) {
+      return customFocQty!;
+    }
     if (!product.focEnabled) return 0;
     if (product.focBuyQty <= 0 || product.focFreeQty <= 0) return 0;
     return (qty ~/ product.focBuyQty) * product.focFreeQty;
@@ -91,9 +98,10 @@ class PosProvider extends ChangeNotifier {
 
   bool get isCreditSale => paymentMethod == 'Credit';
 
+  /// Gross sale amount before customer CD and office rebate deductions.
   double get subtotal => cart.fold<double>(
     0,
-    (double total, CartLine line) => total + _lineSubtotalBeforeRebate(line),
+    (double total, CartLine line) => total + _lineGrossSubtotal(line),
   );
 
   double get rebateAmount => cart.fold<double>(
@@ -116,7 +124,7 @@ class PosProvider extends ChangeNotifier {
     (double total, CartLine line) => total + _lineCompanyCashbackAmount(line),
   );
 
-  double get finalTotal => subtotal - rebateAmount;
+  double get finalTotal => subtotal - customerCdAmount - rebateAmount;
 
   double get buyingTotal => cart.fold<double>(
     0,
@@ -142,9 +150,16 @@ class PosProvider extends ChangeNotifier {
     (int total, CartLine line) => total + _lineFocQty(line),
   );
 
-  double get changeAmount => isCreditSale ? 0 : paidAmount - finalTotal;
+  double get changeAmount {
+    if (isCreditSale) return 0;
+    final double change = paidAmount - finalTotal;
+    return change > 0 ? change : 0;
+  }
 
-  double get creditDueAmount => isCreditSale ? finalTotal : 0;
+  double get creditDueAmount {
+    final double due = finalTotal - paidAmount;
+    return due > 0 ? due : 0;
+  }
 
   double lineUnitPrice(CartLine line) => _lineUnitPrice(line);
 
@@ -154,15 +169,13 @@ class PosProvider extends ChangeNotifier {
 
   int lineStockOutQty(CartLine line) => _lineTotalQty(line);
 
-  double lineDoctorCashback(CartLine line) =>
-      _lineCustomerCashbackAmount(line);
+  double lineDoctorCashback(CartLine line) => _lineCustomerCashbackAmount(line);
 
   double lineEffectiveCost(CartLine line) => _lineEffectiveUnitCost(line);
 
   double lineEstimatedProfit(CartLine line) => _lineNetProfit(line);
 
-  double lineSuggestedNetPrice(CartLine line) =>
-      _lineEffectiveUnitCost(line);
+  double lineSuggestedNetPrice(CartLine line) => _lineEffectiveUnitCost(line);
 
   void setCustomerCdPercent(double value) {
     customerCdPercent = value;
@@ -199,10 +212,12 @@ class PosProvider extends ChangeNotifier {
 
     switch (mode) {
       case SalePricingMode.netPrice:
+        line.customFocQty = 0;
         line.customUnitPrice = _lineEffectiveUnitCost(line);
         line.doctorCashbackAmount = 0;
       case SalePricingMode.drCashback:
         if (previousMode != SalePricingMode.drCashback) {
+          line.customFocQty = null;
           line.customUnitPrice = line.product.sellingPrice;
           line.doctorCashbackAmount = customerCashbackPercent > 0
               ? _lineGrossSubtotal(line) * customerCashbackPercent / 100
@@ -210,9 +225,29 @@ class PosProvider extends ChangeNotifier {
         }
       case SalePricingMode.normal:
       case SalePricingMode.cd2:
+        line.customFocQty = null;
         line.customUnitPrice = null;
         line.doctorCashbackAmount = 0;
     }
+    notifyListeners();
+  }
+
+  void setLineCd2(CartLine line, bool enabled) {
+    line.cd2Enabled = enabled;
+    notifyListeners();
+  }
+
+  void setLineFocQty(CartLine line, int value) {
+    if (line.pricingMode != SalePricingMode.drCashback) {
+      throw Exception('FOC adjustment is available for Doctor Cashback sales');
+    }
+    if (value < 0) {
+      throw Exception('FOC quantity cannot be negative');
+    }
+    if (line.qty + value > line.product.stockQuantity) {
+      throw Exception('Stock not enough for the adjusted FOC quantity');
+    }
+    line.customFocQty = value;
     notifyListeners();
   }
 
@@ -308,13 +343,14 @@ class PosProvider extends ChangeNotifier {
     if (cart.isEmpty) {
       throw Exception('Cart is empty');
     }
-    if (isCreditSale && customerId == null) {
+    if ((isCreditSale || paidAmount < finalTotal) && customerId == null) {
       throw Exception('Select a saved customer for a Credit sale');
     }
-    if (!isCreditSale && paidAmount < finalTotal) {
-      throw Exception('Paid amount is less than total');
-    }
     for (final CartLine line in cart) {
+      if (line.pricingMode == SalePricingMode.drCashback &&
+          customerName.trim().isEmpty) {
+        throw Exception('Enter or select the Doctor name for cashback sale');
+      }
       if ((line.pricingMode == SalePricingMode.netPrice ||
               line.pricingMode == SalePricingMode.drCashback) &&
           _lineUnitPrice(line) <= 0) {
@@ -434,6 +470,10 @@ class PosProvider extends ChangeNotifier {
   int _lineFocQty(CartLine line, {int? paidQty}) {
     final int basePaid = paidQty ?? line.qty;
     if (line.pricingMode == SalePricingMode.netPrice) return 0;
+    if (line.pricingMode == SalePricingMode.drCashback &&
+        line.customFocQty != null) {
+      return line.customFocQty!;
+    }
     if (!line.product.focEnabled) return 0;
     if (line.product.focBuyQty <= 0 || line.product.focFreeQty <= 0) return 0;
     return (basePaid ~/ line.product.focBuyQty) * line.product.focFreeQty;
@@ -462,15 +502,15 @@ class PosProvider extends ChangeNotifier {
 
   String _lineSaleOptionCode(CartLine line) {
     if (line.pricingMode == SalePricingMode.netPrice) {
-      return 'net_price';
+      return line.cd2Enabled ? 'net_price_cd2' : 'net_price';
     }
     if (line.pricingMode == SalePricingMode.drCashback) {
-      return 'dr_cashback';
+      return line.cd2Enabled ? 'dr_cashback_cd2' : 'dr_cashback';
     }
     if (customerType == 'office') {
-      return 'office_rule';
+      return line.cd2Enabled ? 'office_rule_cd2' : 'office_rule';
     }
-    if (line.pricingMode == SalePricingMode.cd2) {
+    if (line.cd2Enabled || line.pricingMode == SalePricingMode.cd2) {
       return 'cd2';
     }
     return 'normal';
@@ -479,8 +519,8 @@ class PosProvider extends ChangeNotifier {
   double _lineGrossSubtotal(CartLine line) => _lineUnitPrice(line) * line.qty;
 
   double _lineLegacyDiscountPercent(CartLine line) {
-    if (line.pricingMode != SalePricingMode.cd2) return 0;
-    return line.pricingMode.discountPercent;
+    if (!line.cd2Enabled && line.pricingMode != SalePricingMode.cd2) return 0;
+    return 2;
   }
 
   double _lineLegacyDiscountAmount(CartLine line) =>

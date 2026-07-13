@@ -57,9 +57,9 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
     final bool isSale = '${sale!['sale_type'] ?? 'sale'}' == 'sale';
     final double finalTotal = _number(sale!['final_total']);
     final double paidAmount = _number(sale!['paid_amount']);
-    final double balance = isCredit
-        ? (finalTotal - paidAmount).clamp(0, double.infinity).toDouble()
-        : 0;
+    final double balance = (finalTotal - paidAmount)
+        .clamp(0, double.infinity)
+        .toDouble();
     final int totalFoc = items.fold<int>(
       0,
       (int total, Map<String, Object?> item) =>
@@ -126,8 +126,8 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                           saleDate: _displayDate('${sale!['sale_date'] ?? ''}'),
                           customerName:
                               '${sale!['customer_name'] ?? ''}'.trim().isEmpty
-                                  ? 'Walk-in Customer'
-                                  : '${sale!['customer_name']}',
+                              ? 'Walk-in Customer'
+                              : '${sale!['customer_name']}',
                           customerType: _customerTypeLabel(
                             '${sale!['customer_type'] ?? 'regular'}',
                           ),
@@ -161,12 +161,12 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                                 subtotal: _number(sale!['subtotal']),
                                 discount: _number(sale!['discount_amount']),
                                 rebate: _number(sale!['rebate_amount']),
-                                doctorCashback:
-                                    _number(sale!['customer_cashback_amount']),
-                                ownerCashback:
-                                    _number(sale!['company_cashback_amount']),
-                                officePayable:
-                                    _number(sale!['office_payable_amount']),
+                                ownerCashback: _number(
+                                  sale!['company_cashback_amount'],
+                                ),
+                                officePayable: _number(
+                                  sale!['office_payable_amount'],
+                                ),
                                 total: finalTotal,
                                 paid: paidAmount,
                                 change: _number(sale!['change_amount']),
@@ -182,9 +182,8 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                         Text(
                           settings.voucherFooter,
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -200,9 +199,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                         children: <Widget>[
                           Text(
                             'Return History',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                           const SizedBox(height: 8),
@@ -275,50 +272,46 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
             _VoucherCell('Amount', style: headerStyle, right: true),
           ],
         ),
-        ...items.asMap().entries.map(
-          (MapEntry<int, Map<String, Object?>> entry) {
-            final Map<String, Object?> item = entry.value;
-            final int paidQty = _integer(
-              item['paid_quantity'] ?? item['quantity'],
-            );
-            final int focQty = _integer(item['foc_quantity']);
-            final double appliedPrice = _number(item['unit_price_applied']);
-            final double unitPrice = appliedPrice != 0
-                ? appliedPrice
-                : _number(item['selling_price']);
-            final double amount = _number(item['subtotal']);
-            final double doctorCashback =
-                _number(item['customer_cashback_amount']);
-            final String option = _saleOptionLabel(
-              '${item['sale_option'] ?? 'normal'}',
-            );
+        ...items.asMap().entries.map((
+          MapEntry<int, Map<String, Object?>> entry,
+        ) {
+          final Map<String, Object?> item = entry.value;
+          final int paidQty = _integer(
+            item['paid_quantity'] ?? item['quantity'],
+          );
+          final int focQty = _integer(item['foc_quantity']);
+          final double appliedPrice = _number(item['unit_price_applied']);
+          final double unitPrice = appliedPrice != 0
+              ? appliedPrice
+              : _number(item['selling_price']);
+          final double amount = _number(item['subtotal']);
+          final String option = _saleOptionLabel(
+            '${item['sale_option'] ?? 'normal'}',
+          );
 
-            return TableRow(
-              children: <Widget>[
-                _VoucherCell('${entry.key + 1}', center: true),
-                _VoucherCell(
-                  '${item['product_name'] ?? ''}',
-                  secondary: <String>[
-                    if (option != 'Normal') option,
-                    if (doctorCashback > 0)
-                      'Doctor Cashback: ${Formatters.money(doctorCashback, symbol: currency)}',
-                  ].join('  •  '),
-                ),
-                _VoucherCell('$paidQty', center: true),
-                _VoucherCell(focQty == 0 ? '-' : '$focQty', center: true),
-                _VoucherCell(
-                  Formatters.money(unitPrice, symbol: currency),
-                  right: true,
-                ),
-                _VoucherCell(
-                  Formatters.money(amount, symbol: currency),
-                  right: true,
-                  bold: true,
-                ),
-              ],
-            );
-          },
-        ),
+          return TableRow(
+            children: <Widget>[
+              _VoucherCell('${entry.key + 1}', center: true),
+              _VoucherCell(
+                '${item['product_name'] ?? ''}',
+                secondary: <String>[
+                  if (option != 'Normal') option,
+                ].join('  •  '),
+              ),
+              _VoucherCell('$paidQty', center: true),
+              _VoucherCell(focQty == 0 ? '-' : '$focQty', center: true),
+              _VoucherCell(
+                Formatters.money(unitPrice, symbol: currency),
+                right: true,
+              ),
+              _VoucherCell(
+                Formatters.money(amount, symbol: currency),
+                right: true,
+                bold: true,
+              ),
+            ],
+          );
+        }),
       ],
     );
   }
@@ -384,9 +377,14 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
     switch (code) {
       case 'office_rule':
         return 'Office FOC';
+      case 'office_rule_cd2':
+        return 'Office FOC + CD 2%';
       case 'doctor_rule':
       case 'dr_cashback':
-        return 'Doctor Cashback';
+      case 'dr_cashback_cd2':
+        return 'Normal';
+      case 'net_price_cd2':
+        return 'Net Price + CD 2%';
       case 'cd2':
         return 'CD 2%';
       default:
@@ -436,9 +434,9 @@ class _VoucherHeader extends StatelessWidget {
           shopName,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontSize: 30,
-                fontWeight: FontWeight.w900,
-              ),
+            fontSize: 30,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         if (phone.trim().isNotEmpty)
           Text(
@@ -510,18 +508,18 @@ class _HeaderValue extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                ),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+            ),
           ),
           const SizedBox(height: 5),
           Text(
             value,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 3),
           Text(secondary, style: Theme.of(context).textTheme.bodyMedium),
@@ -553,13 +551,13 @@ class _VoucherCell extends StatelessWidget {
     final TextAlign align = center
         ? TextAlign.center
         : right
-            ? TextAlign.right
-            : TextAlign.left;
+        ? TextAlign.right
+        : TextAlign.left;
     final CrossAxisAlignment cross = center
         ? CrossAxisAlignment.center
         : right
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start;
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
@@ -569,7 +567,8 @@ class _VoucherCell extends StatelessWidget {
           Text(
             text,
             textAlign: align,
-            style: style ??
+            style:
+                style ??
                 TextStyle(
                   fontSize: 16,
                   fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
@@ -581,9 +580,9 @@ class _VoucherCell extends StatelessWidget {
               secondary,
               textAlign: align,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],
@@ -616,9 +615,9 @@ class _NotesPanel extends StatelessWidget {
         children: <Widget>[
           Text(
             'Voucher Information',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 10),
           Text('Payment Method: $paymentMethod'),
@@ -636,7 +635,6 @@ class _SummaryPanel extends StatelessWidget {
     required this.subtotal,
     required this.discount,
     required this.rebate,
-    required this.doctorCashback,
     required this.ownerCashback,
     required this.officePayable,
     required this.total,
@@ -650,7 +648,6 @@ class _SummaryPanel extends StatelessWidget {
   final double subtotal;
   final double discount;
   final double rebate;
-  final double doctorCashback;
   final double ownerCashback;
   final double officePayable;
   final double total;
@@ -672,8 +669,6 @@ class _SummaryPanel extends StatelessWidget {
           _SummaryLine('Subtotal', subtotal, currency),
           if (discount > 0) _SummaryLine('Discount / CD', discount, currency),
           if (rebate > 0) _SummaryLine('Rebate', rebate, currency),
-          if (doctorCashback > 0)
-            _SummaryLine('Doctor Cashback', doctorCashback, currency),
           if (ownerCashback > 0)
             _SummaryLine('Owner Cashback', ownerCashback, currency),
           if (officePayable > 0 && officePayable != total)
@@ -681,7 +676,7 @@ class _SummaryPanel extends StatelessWidget {
           const Divider(height: 22),
           _SummaryLine('TOTAL', total, currency, important: true),
           _SummaryLine('Paid', paid, currency),
-          if (isCredit)
+          if (balance > 0)
             _SummaryLine('BALANCE', balance, currency, important: true)
           else
             _SummaryLine('Change', change.abs(), currency),
@@ -723,9 +718,7 @@ class _SummaryLine extends StatelessWidget {
             style: TextStyle(
               fontSize: important ? 20 : 16,
               fontWeight: important ? FontWeight.w900 : FontWeight.w700,
-              color: important
-                  ? Theme.of(context).colorScheme.primary
-                  : null,
+              color: important ? Theme.of(context).colorScheme.primary : null,
             ),
           ),
         ],
