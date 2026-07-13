@@ -1,0 +1,26 @@
+stages:
+  - build
+
+windows-release:
+  stage: build
+  tags:
+    - saas-windows-medium-amd64
+  script:
+    - $flutterRoot = Join-Path $env:CI_PROJECT_DIR '.flutter'
+    - git clone --depth 1 --branch stable https://github.com/flutter/flutter.git $flutterRoot
+    - $env:Path = "$flutterRoot\bin;$env:Path"
+    - flutter --version
+    - flutter config --enable-windows-desktop
+    - flutter pub get
+    - flutter analyze --no-fatal-infos --no-fatal-warnings
+    - flutter test
+    - flutter build windows --release
+    - $releaseDir = Join-Path $env:CI_PROJECT_DIR 'build/windows/x64/runner/Release'
+    - $zipPath = Join-Path $env:CI_PROJECT_DIR 'build/Shine-Myan-Thit-POS-Windows.zip'
+    - if (-not (Test-Path $releaseDir)) { throw "Windows release directory was not created: $releaseDir" }
+    - Compress-Archive -Path "$releaseDir/*" -DestinationPath $zipPath -Force
+  artifacts:
+    name: Shine-Myan-Thit-POS-Windows
+    paths:
+      - build/Shine-Myan-Thit-POS-Windows.zip
+    expire_in: 30 days
