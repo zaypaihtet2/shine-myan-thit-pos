@@ -314,7 +314,7 @@ class _PosSaleScreenState extends State<PosSaleScreen> {
                         labelText: 'Customer Profile',
                         helperText:
                             pos.isCreditSale || pos.paidAmount < pos.finalTotal
-                            ? 'A saved customer is required when payment is not complete'
+                            ? 'Enter a customer name or select a saved customer when payment is not complete'
                             : null,
                       ),
                     ),

@@ -664,6 +664,35 @@ class DatabaseHelper {
     });
   }
 
+  Future<void> updateSaleSettlementStatus({
+    required int saleId,
+    required bool paid,
+  }) async {
+    final Database db = await database;
+    final List<Map<String, Object?>> rows = await db.query(
+      DatabaseTables.sales,
+      columns: <String>['final_total'],
+      where: 'id = ?',
+      whereArgs: <Object?>[saleId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return;
+
+    final double finalTotal = (rows.first['final_total'] as num? ?? 0)
+        .toDouble();
+    final String now = DateTime.now().toIso8601String();
+    await db.update(
+      DatabaseTables.sales,
+      <String, Object?>{
+        'paid_amount': paid ? finalTotal : 0,
+        'change_amount': 0,
+        'updated_at': now,
+      },
+      where: 'id = ?',
+      whereArgs: <Object?>[saleId],
+    );
+  }
+
   Future<void> seedDemoData() async {
     final Database db = await database;
     final Map<String, String> settings = await getSettings();

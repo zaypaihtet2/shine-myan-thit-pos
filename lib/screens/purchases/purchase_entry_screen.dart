@@ -6,8 +6,15 @@ import '../../providers/purchase_provider.dart';
 import '../../providers/settings_provider.dart';
 import 'purchase_entry_form_screen.dart';
 
-class PurchaseEntryScreen extends StatelessWidget {
+class PurchaseEntryScreen extends StatefulWidget {
   const PurchaseEntryScreen({super.key});
+
+  @override
+  State<PurchaseEntryScreen> createState() => _PurchaseEntryScreenState();
+}
+
+class _PurchaseEntryScreenState extends State<PurchaseEntryScreen> {
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +103,8 @@ class PurchaseEntryScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          _buildMonthlyCashback(context, provider, currency),
+          const SizedBox(height: 14),
           Expanded(
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
@@ -135,12 +144,30 @@ class PurchaseEntryScreen extends StatelessWidget {
                             '${(row['total_quantity'] as num? ?? 0).toInt()} qty'
                             '${reference.isEmpty ? '' : ' | Ref: $reference'}',
                           ),
-                          trailing: Text(
-                            Formatters.money(
-                              row['total_amount'] as num? ?? 0,
-                              symbol: currency,
-                            ),
-                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                Formatters.money(
+                                  row['total_amount'] as num? ?? 0,
+                                  symbol: currency,
+                                ),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                tooltip: 'Delete purchase and reduce stock',
+                                onPressed: () => _deletePurchase(
+                                  context,
+                                  purchaseId,
+                                  '${row['purchase_no']}',
+                                ),
+                                color: Theme.of(context).colorScheme.error,
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
                           ),
                           onTap: () =>
                               _showDetail(context, purchaseId, currency),
@@ -152,6 +179,183 @@ class PurchaseEntryScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildMonthlyCashback(
+    BuildContext context,
+    PurchaseProvider provider,
+    String currency,
+  ) {
+    final Map<String, double> cashbackByCompany = <String, double>{};
+    for (final Map<String, Object?> row in provider.purchases) {
+      final DateTime? date = DateTime.tryParse('${row['purchase_date'] ?? ''}');
+      if (date == null ||
+          date.year != _selectedMonth.year ||
+          date.month != _selectedMonth.month) {
+        continue;
+      }
+      final String company = '${row['supplier_name'] ?? ''}'.trim();
+      if (company.isEmpty) continue;
+      final double amount = (row['cashback_amount'] as num? ?? 0).toDouble();
+      cashbackByCompany[company] = (cashbackByCompany[company] ?? 0) + amount;
+    }
+    final List<MapEntry<String, double>> entries =
+        cashbackByCompany.entries.toList()
+          ..sort((MapEntry<String, double> a, MapEntry<String, double> b) {
+            return b.value.compareTo(a.value);
+          });
+    final double total = entries.fold<double>(
+      0,
+      (double sum, MapEntry<String, double> entry) => sum + entry.value,
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(Icons.savings_outlined),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Monthly Company Cashback',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Previous month',
+                  onPressed: () => setState(() {
+                    _selectedMonth = DateTime(
+                      _selectedMonth.year,
+                      _selectedMonth.month - 1,
+                    );
+                  }),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text(
+                  _monthLabel(_selectedMonth),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                IconButton(
+                  tooltip: 'Next month',
+                  onPressed: () => setState(() {
+                    _selectedMonth = DateTime(
+                      _selectedMonth.year,
+                      _selectedMonth.month + 1,
+                    );
+                  }),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const Divider(height: 18),
+            if (entries.isEmpty)
+              Text(
+                'No company cashback recorded for this month.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              )
+            else ...<Widget>[
+              ...entries.map(
+                (MapEntry<String, double> entry) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(child: Text(entry.key)),
+                      Text(
+                        Formatters.money(entry.value, symbol: currency),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  const Text(
+                    'Total Cashback: ',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    Formatters.money(total, symbol: currency),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _monthLabel(DateTime month) {
+    const List<String> names = <String>[
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${names[month.month - 1]} ${month.year}';
+  }
+
+  Future<void> _deletePurchase(
+    BuildContext context,
+    int purchaseId,
+    String purchaseNo,
+  ) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text('Delete $purchaseNo?'),
+        content: const Text(
+          'This will delete the purchase and reduce the purchased quantities from stock. Continue?',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await context.read<PurchaseProvider>().deletePurchase(purchaseId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Purchase deleted and stock reduced')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$error')));
+    }
   }
 
   Future<void> _openForm(BuildContext context) async {

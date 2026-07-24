@@ -69,6 +69,14 @@ class SalesProvider extends ChangeNotifier {
     await load();
   }
 
+  Future<void> updateSettlementStatus({
+    required int saleId,
+    required bool paid,
+  }) async {
+    await _db.updateSaleSettlementStatus(saleId: saleId, paid: paid);
+    await load();
+  }
+
   Future<void> seedDemoData() async {
     await _db.seedDemoData();
     await load();

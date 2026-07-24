@@ -343,8 +343,11 @@ class PosProvider extends ChangeNotifier {
     if (cart.isEmpty) {
       throw Exception('Cart is empty');
     }
-    if ((isCreditSale || paidAmount < finalTotal) && customerId == null) {
-      throw Exception('Select a saved customer for a Credit sale');
+    final bool isUnpaid = paidAmount < finalTotal;
+    if ((isCreditSale || isUnpaid) &&
+        customerId == null &&
+        customerName.trim().isEmpty) {
+      throw Exception('Enter or select a customer for an unpaid sale');
     }
     for (final CartLine line in cart) {
       if (line.pricingMode == SalePricingMode.drCashback &&

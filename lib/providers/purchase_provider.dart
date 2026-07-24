@@ -297,6 +297,85 @@ class PurchaseProvider extends ChangeNotifier {
     return <String, Object?>{'purchase': entries.first, 'items': items};
   }
 
+  Future<void> deletePurchase(int purchaseId) async {
+    await ensureTables();
+    final Database db = await _db.database;
+    await db.transaction<void>((Transaction txn) async {
+      final List<Map<String, Object?>> entries = await txn.query(
+        DatabaseTables.purchases,
+        where: 'id = ?',
+        whereArgs: <Object?>[purchaseId],
+        limit: 1,
+      );
+      if (entries.isEmpty) {
+        throw Exception('Purchase entry not found');
+      }
+
+      final Map<String, Object?> purchase = entries.first;
+      final String purchaseNo = '${purchase['purchase_no'] ?? ''}';
+      final String supplier = '${purchase['supplier_name'] ?? ''}';
+      final String now = DateTime.now().toIso8601String();
+      final List<Map<String, Object?>> items = await txn.query(
+        DatabaseTables.purchaseItems,
+        where: 'purchase_entry_id = ?',
+        whereArgs: <Object?>[purchaseId],
+      );
+
+      for (final Map<String, Object?> item in items) {
+        final int productId = (item['product_id'] as num).toInt();
+        final int quantity = (item['quantity'] as num? ?? 0).toInt();
+        final int focQuantity = (item['foc_quantity'] as num? ?? 0).toInt();
+        final int removeQuantity = quantity + focQuantity;
+        final List<Map<String, Object?>> products = await txn.query(
+          DatabaseTables.products,
+          columns: <String>['stock_quantity', 'product_name'],
+          where: 'id = ?',
+          whereArgs: <Object?>[productId],
+          limit: 1,
+        );
+        if (products.isEmpty) {
+          throw Exception('Product not found while deleting purchase');
+        }
+        final int oldStock = (products.first['stock_quantity'] as num? ?? 0)
+            .toInt();
+        if (oldStock < removeQuantity) {
+          throw Exception(
+            'Cannot delete $purchaseNo: stock for ${products.first['product_name']} '
+            'is already lower than the purchased quantity.',
+          );
+        }
+        final int newStock = oldStock - removeQuantity;
+        await txn.update(
+          DatabaseTables.products,
+          <String, Object?>{'stock_quantity': newStock, 'updated_at': now},
+          where: 'id = ?',
+          whereArgs: <Object?>[productId],
+        );
+        await txn.insert(DatabaseTables.stockHistories, <String, Object?>{
+          'product_id': productId,
+          'type': 'purchase_delete',
+          'quantity': -removeQuantity,
+          'old_stock': oldStock,
+          'new_stock': newStock,
+          'note': 'Deleted purchase $purchaseNo from $supplier',
+          'created_at': now,
+        });
+      }
+
+      await txn.delete(
+        DatabaseTables.purchaseItems,
+        where: 'purchase_entry_id = ?',
+        whereArgs: <Object?>[purchaseId],
+      );
+      await txn.delete(
+        DatabaseTables.purchases,
+        where: 'id = ?',
+        whereArgs: <Object?>[purchaseId],
+      );
+    });
+    await load();
+  }
+
   Future<String> _nextPurchaseNo(Transaction txn, String purchaseDate) async {
     final DateTime parsed = DateTime.tryParse(purchaseDate) ?? DateTime.now();
     final String prefix =

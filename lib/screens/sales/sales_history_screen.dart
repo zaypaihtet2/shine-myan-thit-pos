@@ -156,6 +156,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                       return _SaleHistoryCard(
                         sale: sale,
                         currency: currency,
+                        onEditStatus: () => _editSettlementStatus(sale),
                         onView: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
                             builder: (_) => SaleDetailScreen(saleId: sale.id!),
@@ -202,6 +203,32 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
       await context.read<SalesProvider>().deleteSale(saleId);
     }
   }
+
+  Future<void> _editSettlementStatus(SaleModel sale) async {
+    final bool? paid = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text('Update ${sale.invoiceNo} status'),
+        content: const Text('Choose whether this transaction is settled.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Mark Unpaid'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Mark Paid'),
+          ),
+        ],
+      ),
+    );
+    if (paid != null && mounted) {
+      await context.read<SalesProvider>().updateSettlementStatus(
+        saleId: sale.id!,
+        paid: paid,
+      );
+    }
+  }
 }
 
 class _ColumnHeader extends StatelessWidget {
@@ -238,12 +265,14 @@ class _SaleHistoryCard extends StatelessWidget {
     required this.sale,
     required this.currency,
     required this.onView,
+    required this.onEditStatus,
     required this.onDelete,
   });
 
   final SaleModel sale;
   final String currency;
   final VoidCallback onView;
+  final VoidCallback onEditStatus;
   final VoidCallback? onDelete;
 
   @override
@@ -323,6 +352,7 @@ class _SaleHistoryCard extends StatelessWidget {
                       )
                     : _SettlementBadge(
                         paid: sale.paidAmount >= sale.finalTotal,
+                        onTap: onEditStatus,
                       ),
               ),
               Expanded(
@@ -330,21 +360,33 @@ class _SaleHistoryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      Formatters.money(sale.finalTotal, symbol: currency),
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: isReturn
-                                ? Theme.of(context).colorScheme.error
-                                : Theme.of(context).colorScheme.primary,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isReturn ? 'Returned amount' : 'Sale amount',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    if (isReturn)
+                      _AmountText(
+                        amount: sale.finalTotal,
+                        currency: currency,
+                        label: 'Returned amount',
+                        color: Theme.of(context).colorScheme.error,
+                      )
+                    else if (sale.paidAmount >= sale.finalTotal)
+                      Text(
+                        '—',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                      )
+                    else
+                      _AmountText(
+                        amount: (sale.finalTotal - sale.paidAmount)
+                            .clamp(0, double.infinity)
+                            .toDouble(),
+                        currency: currency,
+                        label: 'Outstanding balance',
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                   ],
                 ),
               ),
@@ -437,9 +479,10 @@ class _PaymentBadge extends StatelessWidget {
 }
 
 class _SettlementBadge extends StatelessWidget {
-  const _SettlementBadge({required this.paid});
+  const _SettlementBadge({required this.paid, required this.onTap});
 
   final bool paid;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -449,19 +492,58 @@ class _SettlementBadge extends StatelessWidget {
     final Color foreground = paid
         ? const Color(0xFF047857)
         : const Color(0xFFB91C1C);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
+    return Tooltip(
+      message: 'Click to change status',
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        paid ? 'PAID' : 'UNPAID',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w900,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            paid ? 'PAID' : 'UNPAID',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _AmountText extends StatelessWidget {
+  const _AmountText({
+    required this.amount,
+    required this.currency,
+    required this.label,
+    required this.color,
+  });
+
+  final double amount;
+  final String currency;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          Formatters.money(amount, symbol: currency),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
     );
   }
 }
