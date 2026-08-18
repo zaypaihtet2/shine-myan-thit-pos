@@ -72,8 +72,8 @@ jobs:
           Compress-Archive -Path "$packageDir/*" -DestinationPath $zipPath -Force
 
           "### Windows build" >> $env:GITHUB_STEP_SUMMARY
-          "- Executable: `pos_jar_jar.exe`" >> $env:GITHUB_STEP_SUMMARY
-          "- Package: `Shine-Myan-Thit-POS-Windows.zip`" >> $env:GITHUB_STEP_SUMMARY
+          "- Executable: pos_jar_jar.exe" >> $env:GITHUB_STEP_SUMMARY
+          "- Package: Shine-Myan-Thit-POS-Windows.zip" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload EXE-only artifact
         uses: actions/upload-artifact@v4
