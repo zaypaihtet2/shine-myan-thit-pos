@@ -179,9 +179,21 @@ class CartItemWidget extends StatelessWidget {
                       onPressed: onDec,
                       icon: const Icon(Icons.remove_circle_outline),
                     ),
-                    Text(
-                      '${line.qty}',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    SizedBox(
+                      width: 52,
+                      child: TextFormField(
+                        key: ValueKey<int>(line.qty),
+                        initialValue: '${line.qty}',
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 6),
+                        ),
+                        onFieldSubmitted: (String value) =>
+                            _applyTypedQty(context, value),
+                      ),
                     ),
                     IconButton(
                       tooltip: 'Increase quantity',
@@ -201,6 +213,18 @@ class CartItemWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _applyTypedQty(BuildContext context, String value) {
+    final int? qty = int.tryParse(value.trim());
+    if (qty == null) return;
+    try {
+      context.read<PosProvider>().setQty(line, qty);
+    } catch (error) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$error')));
+    }
   }
 
   Future<bool> _showNetPriceDialog(BuildContext context) async {

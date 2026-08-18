@@ -320,6 +320,19 @@ class PosProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setQty(CartLine line, int value) {
+    if (value <= 0) {
+      cart.remove(line);
+      notifyListeners();
+      return;
+    }
+    if (_lineTotalQty(line, paidQty: value) > line.product.stockQuantity) {
+      throw Exception('Stock not enough including FOC quantity');
+    }
+    line.qty = value;
+    notifyListeners();
+  }
+
   void remove(CartLine line) {
     cart.remove(line);
     notifyListeners();

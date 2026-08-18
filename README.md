@@ -12,7 +12,7 @@ The application runs locally on Windows and Linux, uses SQLite for storage, and 
 - **Local database:** SQLite
 - **State management:** Provider
 - **Database package:** `sqflite_common_ffi`
-- **Windows executable:** `shine_myan_thit_pos.exe`
+- **Windows executable:** `pos_jar_jar.exe`
 - **Internet required:** No
 
 ## Main Features
@@ -572,7 +572,7 @@ build/windows/x64/runner/Release/
 Run:
 
 ```text
-shine_myan_thit_pos.exe
+pos_jar_jar.exe
 ```
 
 Keep the EXE, DLL files, and `data` directory together. Do not move only the EXE file.
@@ -587,39 +587,18 @@ flutter build linux --release
 
 ## GitHub Actions Windows Build
 
-The repository contains a Windows build workflow at:
+The repository contains a Windows build workflow at `.github/workflows/windows-build.yml`. It runs on pushes to `main` or `agent/**`, pull requests targeting `main`, manual workflow dispatches, and version tags matching `v*`.
 
-```text
-.github/workflows/windows-build.yml
+The workflow installs Flutter stable, enables Windows desktop support, installs dependencies, runs analysis and tests, builds the release, verifies `pos_jar_jar.exe` exists, and packages the complete release folder as `Shine-Myan-Thit-POS-Windows.zip`. Two artifacts are uploaded and retained for 30 days: `Shine-Myan-Thit-POS-Windows-EXE`, containing only `pos_jar_jar.exe`, and `Shine-Myan-Thit-POS-Windows`, containing the complete runnable ZIP. The EXE-only artifact is provided as requested, but Windows Flutter apps normally need the DLLs and `data` directory from the complete ZIP to run.
+
+To publish the ZIP as a GitHub Release, create and push a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-The workflow runs on:
-
-- Push to `main`
-- Pull request targeting `main`
-- Manual workflow dispatch
-
-It performs:
-
-1. Checkout source
-2. Install Flutter stable
-3. Enable Windows desktop support
-4. Install dependencies
-5. Run Flutter analysis
-6. Build Windows release
-7. Create `Shine-Myan-Thit-POS-Windows.zip`
-8. Upload the ZIP as a GitHub Actions artifact
-
-The artifact is retained for 30 days.
-
-## Important Notes
-
-- The application is fully offline.
-- All business data is stored on the local computer.
-- Product images are copied into application support storage.
-- A database backup should be created regularly.
-- The application folder must keep its DLL and data files beside the EXE.
-- Test sales, FOC rules, credit sales, purchases, returns, and printing before using the application in production.
+The tagged workflow run creates release notes and attaches the Windows ZIP automatically.
 
 ## License
 

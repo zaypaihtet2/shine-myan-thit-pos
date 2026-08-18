@@ -30,12 +30,17 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     final int returnCount = sales.sales
         .where((SaleModel sale) => sale.saleType == 'return')
         .length;
-    final double visibleAmount = sales.sales.fold<double>(
-      0,
-      (double sum, SaleModel sale) =>
-          sum +
-          (sale.saleType == 'return' ? -sale.finalTotal : sale.finalTotal),
-    );
+    final double visibleAmount = sales.sales.fold<double>(0, (
+      double sum,
+      SaleModel sale,
+    ) {
+      if (sale.saleType == 'return') return sum - sale.finalTotal;
+      final double outstanding = (sale.finalTotal - sale.paidAmount).clamp(
+        0,
+        double.infinity,
+      );
+      return sum + outstanding;
+    });
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -94,7 +99,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 _HeroStat(label: 'Returns', value: '$returnCount'),
                 const SizedBox(width: 10),
                 _HeroStat(
-                  label: 'Visible Amount',
+                  label: 'Unpaid Amount',
                   value: Formatters.money(visibleAmount, symbol: currency),
                   wide: true,
                 ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/utils/formatters.dart';
 import '../../models/product_model.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/settings_provider.dart';
 
 class StockManagementScreen extends StatefulWidget {
   const StockManagementScreen({super.key});
@@ -26,9 +28,14 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
   @override
   Widget build(BuildContext context) {
     final ProductProvider provider = context.watch<ProductProvider>();
+    final String currency = context.watch<SettingsProvider>().currencySymbol;
     final int lowStockCount = provider.products.where((ProductModel p) {
       return p.stockQuantity <= p.lowStockAlertQuantity;
     }).length;
+    final double totalStockValue = provider.products.fold<double>(
+      0,
+      (double sum, ProductModel p) => sum + (p.stockQuantity * p.buyingPrice),
+    );
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -86,6 +93,11 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                 ),
                 const SizedBox(width: 10),
                 _HeroStat(label: 'Low Stock', value: '$lowStockCount'),
+                const SizedBox(width: 10),
+                _HeroStat(
+                  label: 'Stock Value',
+                  value: Formatters.money(totalStockValue, symbol: currency),
+                ),
               ],
             ),
           ),
@@ -220,6 +232,9 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                             runSpacing: 6,
                             children: <Widget>[
                               _InfoPill('Stock ${p.stockQuantity}', low: low),
+                              _InfoPill(
+                                'Net ${Formatters.money(p.buyingPrice, symbol: currency)}',
+                              ),
                               _InfoPill('Low alert ${p.lowStockAlertQuantity}'),
                               if (p.discountPercent > 0)
                                 _InfoPill(
@@ -227,9 +242,24 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                 ),
                             ],
                           ),
-                          trailing: Text(
-                            'Sell ${p.sellingPrice.toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          trailing: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: <Widget>[
+                              Text(
+                                Formatters.money(
+                                  p.stockQuantity * p.buyingPrice,
+                                  symbol: currency,
+                                ),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                '${p.stockQuantity} x ${Formatters.money(p.buyingPrice, symbol: currency)}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                           ),
                         ),
                       );

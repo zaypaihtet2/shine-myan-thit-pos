@@ -117,7 +117,10 @@ class _RootGateState extends State<RootGate> {
       final ReportProvider reports = context.read<ReportProvider>();
 
       await settings.load();
-      await sales.seedDemoData();
+      if (!settings.demoSeeded) {
+        await sales.seedDemoData();
+        await settings.load();
+      }
       await categories.load();
       await companies.load();
       await customers.load();

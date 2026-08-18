@@ -1,39 +1,38 @@
-name: Build Shine Myan Thit POS for Windows
+name: Build Windows EXE
 
 on:
   push:
     branches:
       - main
       - 'agent/**'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: windows-release-${{ github.ref }}
+  group: windows-build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-windows:
-    name: Windows Release
+    name: Build and package Windows app
     runs-on: windows-latest
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
-      - name: Show Flutter version
-        run: flutter --version
 
       - name: Enable Windows desktop
         run: flutter config --enable-windows-desktop
@@ -44,6 +43,9 @@ jobs:
       - name: Analyze source
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      - name: Run tests
+        run: flutter test
+
       - name: Build Windows release
         run: flutter build windows --release
 
@@ -51,20 +53,47 @@ jobs:
         shell: pwsh
         run: |
           $releaseDir = "build/windows/x64/runner/Release"
+          $packageDir = "build/Shine-Myan-Thit-POS-Windows"
           $zipPath = "build/Shine-Myan-Thit-POS-Windows.zip"
-          if (-not (Test-Path $releaseDir)) {
-            throw "Windows release directory was not created: $releaseDir"
+
+          if (-not (Test-Path "$releaseDir/pos_jar_jar.exe")) {
+            throw "Windows executable was not created: $releaseDir/pos_jar_jar.exe"
+          }
+
+          if (Test-Path $packageDir) {
+            Remove-Item $packageDir -Recurse -Force
           }
           if (Test-Path $zipPath) {
             Remove-Item $zipPath -Force
           }
-          Compress-Archive -Path "$releaseDir/*" -DestinationPath $zipPath -Force
-          Write-Host "Created $zipPath"
 
-      - name: Upload Windows ZIP
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+          Copy-Item "$releaseDir/*" $packageDir -Recurse -Force
+          Compress-Archive -Path "$packageDir/*" -DestinationPath $zipPath -Force
+
+          "### Windows build" >> $env:GITHUB_STEP_SUMMARY
+          "- Executable: `pos_jar_jar.exe`" >> $env:GITHUB_STEP_SUMMARY
+          "- Package: `Shine-Myan-Thit-POS-Windows.zip`" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload EXE-only artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shine-Myan-Thit-POS-Windows-EXE
+          path: build/windows/x64/runner/Release/pos_jar_jar.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload complete Windows package
         uses: actions/upload-artifact@v4
         with:
           name: Shine-Myan-Thit-POS-Windows
           path: build/Shine-Myan-Thit-POS-Windows.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish tagged GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: build/Shine-Myan-Thit-POS-Windows.zip
