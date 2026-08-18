@@ -12,7 +12,7 @@ The application runs locally on Windows and Linux, uses SQLite for storage, and 
 - **Local database:** SQLite
 - **State management:** Provider
 - **Database package:** `sqflite_common_ffi`
-- **Windows executable:** `pos_jar_jar.exe`
+- **Windows executable:** `shine_myan_thit_pos.exe`
 - **Internet required:** No
 
 ## Main Features
@@ -572,7 +572,7 @@ build/windows/x64/runner/Release/
 Run:
 
 ```text
-pos_jar_jar.exe
+shine_myan_thit_pos.exe
 ```
 
 Keep the EXE, DLL files, and `data` directory together. Do not move only the EXE file.
@@ -589,7 +589,7 @@ flutter build linux --release
 
 The repository contains a Windows build workflow at `.github/workflows/windows-build.yml`. It runs on pushes to `main` or `agent/**`, pull requests targeting `main`, manual workflow dispatches, and version tags matching `v*`.
 
-The workflow installs Flutter stable, enables Windows desktop support, installs dependencies, runs analysis and tests, builds the release, verifies `pos_jar_jar.exe` exists, and packages the complete release folder as `Shine-Myan-Thit-POS-Windows.zip`. Two artifacts are uploaded and retained for 30 days: `Shine-Myan-Thit-POS-Windows-EXE`, containing only `pos_jar_jar.exe`, and `Shine-Myan-Thit-POS-Windows`, containing the complete runnable ZIP. The EXE-only artifact is provided as requested, but Windows Flutter apps normally need the DLLs and `data` directory from the complete ZIP to run.
+The workflow installs Flutter stable, enables Windows desktop support, installs dependencies, runs analysis and tests, builds the release, verifies `shine_myan_thit_pos.exe` exists, and packages the complete release folder as `Shine-Myan-Thit-POS-Windows.zip`. Two artifacts are uploaded and retained for 30 days: `Shine-Myan-Thit-POS-Windows-EXE`, containing only `shine_myan_thit_pos.exe`, and `Shine-Myan-Thit-POS-Windows`, containing the complete runnable ZIP. The EXE-only artifact is provided as requested, but Windows Flutter apps normally need the DLLs and `data` directory from the complete ZIP to run.
 
 To publish the ZIP as a GitHub Release, create and push a version tag:
 

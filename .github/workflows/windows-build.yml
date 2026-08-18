@@ -56,8 +56,8 @@ jobs:
           $packageDir = "build/Shine-Myan-Thit-POS-Windows"
           $zipPath = "build/Shine-Myan-Thit-POS-Windows.zip"
 
-          if (-not (Test-Path "$releaseDir/pos_jar_jar.exe")) {
-            throw "Windows executable was not created: $releaseDir/pos_jar_jar.exe"
+          if (-not (Test-Path "$releaseDir/shine_myan_thit_pos.exe")) {
+            throw "Windows executable was not created: $releaseDir/shine_myan_thit_pos.exe"
           }
 
           if (Test-Path $packageDir) {
@@ -72,14 +72,14 @@ jobs:
           Compress-Archive -Path "$packageDir/*" -DestinationPath $zipPath -Force
 
           "### Windows build" >> $env:GITHUB_STEP_SUMMARY
-          "- Executable: pos_jar_jar.exe" >> $env:GITHUB_STEP_SUMMARY
+          "- Executable: shine_myan_thit_pos.exe" >> $env:GITHUB_STEP_SUMMARY
           "- Package: Shine-Myan-Thit-POS-Windows.zip" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload EXE-only artifact
         uses: actions/upload-artifact@v4
         with:
           name: Shine-Myan-Thit-POS-Windows-EXE
-          path: build/windows/x64/runner/Release/pos_jar_jar.exe
+          path: build/windows/x64/runner/Release/shine_myan_thit_pos.exe
           if-no-files-found: error
           retention-days: 30
 
