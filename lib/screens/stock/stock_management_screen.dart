@@ -34,7 +34,8 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
     }).length;
     final double totalStockValue = provider.products.fold<double>(
       0,
-      (double sum, ProductModel p) => sum + (p.stockQuantity * p.buyingPrice),
+      (double sum, ProductModel p) =>
+          sum + (p.stockQuantity * p.netCostPerUnit),
     );
 
     return Padding(
@@ -233,7 +234,14 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                             children: <Widget>[
                               _InfoPill('Stock ${p.stockQuantity}', low: low),
                               _InfoPill(
-                                'Net ${Formatters.money(p.buyingPrice, symbol: currency)}',
+                                'Opening ${Formatters.money(p.buyingPrice, symbol: currency)}',
+                              ),
+                              if (p.focEnabled)
+                                _InfoPill(
+                                  'FOC - Buy ${p.focBuyQty} Get ${p.focFreeQty}',
+                                ),
+                              _InfoPill(
+                                'Net ${Formatters.money(p.netCostPerUnit, symbol: currency)}',
                               ),
                               _InfoPill('Low alert ${p.lowStockAlertQuantity}'),
                               if (p.discountPercent > 0)
@@ -248,7 +256,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                             children: <Widget>[
                               Text(
                                 Formatters.money(
-                                  p.stockQuantity * p.buyingPrice,
+                                  p.stockQuantity * p.netCostPerUnit,
                                   symbol: currency,
                                 ),
                                 style: const TextStyle(
@@ -256,7 +264,7 @@ class _StockManagementScreenState extends State<StockManagementScreen> {
                                 ),
                               ),
                               Text(
-                                '${p.stockQuantity} x ${Formatters.money(p.buyingPrice, symbol: currency)}',
+                                '${p.stockQuantity} x ${Formatters.money(p.netCostPerUnit, symbol: currency)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],

@@ -44,6 +44,14 @@ class ProductModel {
   final String? createdAt;
   final String? updatedAt;
 
+  /// Cost per unit after spreading the buying price over the FOC-free units
+  /// received with it (e.g. buy 50 get 7 free at 45,000 -> ~39,473/unit).
+  double get netCostPerUnit {
+    if (!focEnabled || focBuyQty <= 0 || focFreeQty <= 0) return buyingPrice;
+    final int receivedQty = focBuyQty + focFreeQty;
+    return buyingPrice * focBuyQty / receivedQty;
+  }
+
   bool get isExpired {
     final DateTime? date = DateTime.tryParse(expiryDate ?? '');
     if (date == null) return false;
